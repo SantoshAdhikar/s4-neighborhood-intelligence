@@ -398,9 +398,10 @@ export default function BusinessOnboarding() {
 
             {saved && (
               <button
-                type="button"
-                onClick={startAnotherBusiness}
-              >
+    type="button"
+    onClick={startAnotherBusiness}
+    className="add-business-button"
+  >
                 Add another business
               </button>
             )}
