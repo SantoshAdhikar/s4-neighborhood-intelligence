@@ -10,7 +10,8 @@ import {
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
-import { MapPinned, Radar, RefreshCw } from 'lucide-react';
+import { MapPinned, RefreshCw } from 'lucide-react';
+import BusinessFlowNav from '../../app/BusinessFlowNav';
 import { getBusiness } from '../../services/businessApi';
 import { researchNeighborhood } from '../../services/neighborhoodApi';
 import type { BusinessProfile } from '../../types/business';
@@ -70,17 +71,9 @@ export default function NeighborhoodExplorer({ businessId }: Props) {
 
   return (
     <main className="explorer-page">
-      <header className="explorer-header">
-        <Link className="explorer-brand" to="/dashboard">
-          <Radar size={24} />
-          S4 Neighborhood Intelligence
-        </Link>
-        <Link className="explorer-link" to="/dashboard">
-          Back to dashboard
-        </Link>
-      </header>
 
       <div className="explorer-content">
+        <BusinessFlowNav businessId={businessId} current="neighborhood" />
         <div className="explorer-title-row">
           <div>
             <p className="explorer-eyebrow">

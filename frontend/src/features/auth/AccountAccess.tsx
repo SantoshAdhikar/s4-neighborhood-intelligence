@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { ArrowRight, LockKeyhole, Radar } from 'lucide-react';
 import { registerAccount } from '../../services/authApi';
-import { useAuth } from '../../app/AuthContext';
+import { useAuth } from '../../app/useAuth';
 
 export default function AccountAccess() {
   const { account, signIn } = useAuth();

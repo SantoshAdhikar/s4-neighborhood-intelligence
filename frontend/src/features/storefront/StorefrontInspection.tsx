@@ -1,6 +1,6 @@
-import { Link } from 'react-router';
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
-import { ArrowLeft, Camera, FileVideo, LoaderCircle, ScanEye } from 'lucide-react';
+import { Camera, FileVideo, LoaderCircle, ScanEye } from 'lucide-react';
+import BusinessFlowNav from '../../app/BusinessFlowNav';
 import { getBusiness } from '../../services/businessApi';
 import {
   analyzeStorefrontMedia,
@@ -75,13 +75,8 @@ export default function StorefrontInspection({ businessId }: Props) {
 
   return (
     <main className="storefront-page">
-      <header className="storefront-header">
-        <strong><ScanEye size={23} /> S4 Neighborhood Intelligence</strong>
-        <Link to={`/businesses/${businessId}/neighborhood`}>
-          <ArrowLeft size={16} /> Neighborhood Explorer
-        </Link>
-      </header>
       <div className="storefront-content">
+        <BusinessFlowNav businessId={businessId} current="storefront" />
         <p className="storefront-kicker">STEP 03 / VISUAL EVIDENCE</p>
         <h1>Storefront Visual Inspection</h1>
         <p className="storefront-muted">
@@ -111,30 +106,34 @@ export default function StorefrontInspection({ businessId }: Props) {
         <div className="storefront-items">
           {files.map((file) => (
             <article className="storefront-card" key={file.id}>
-              <div className="storefront-preview">
-                {file.mimeType.startsWith('video/') ? (
-                  <video controls preload="metadata" src={storefrontFileUrl(businessId, file.id)} />
-                ) : (
-                  <img src={storefrontFileUrl(businessId, file.id)} alt={`Storefront upload ${file.originalFilename}`} />
-                )}
+              <div className="storefront-card-top">
+                <div className="storefront-preview">
+                  {file.mimeType.startsWith('video/') ? (
+                    <video controls preload="metadata" src={storefrontFileUrl(businessId, file.id)} />
+                  ) : (
+                    <img src={storefrontFileUrl(businessId, file.id)} alt={`Storefront upload ${file.originalFilename}`} />
+                  )}
+                </div>
+                <div className="storefront-card-overview">
+                  <div className="storefront-card-heading">
+                    <div>
+                      <strong><FileVideo size={17} /> {file.originalFilename}</strong>
+                      <small>{(file.sizeBytes / 1024 / 1024).toFixed(2)} MB · {new Date(file.createdAt).toLocaleString()}</small>
+                    </div>
+                    <span className="storefront-status">{file.status}</span>
+                  </div>
+                  {file.status !== 'ANALYZED' && file.status !== 'ANALYZING' && (
+                    <button className="storefront-analyze" type="button" disabled={busy !== null}
+                      onClick={() => void analyze(file.id)}>
+                      {busy === file.id ? <LoaderCircle size={17} className="storefront-spin" /> : <ScanEye size={17} />}
+                      {busy === file.id ? 'Analyzing with Meta…' : 'Analyze with Meta Muse Spark'}
+                    </button>
+                  )}
+                  {file.status === 'ANALYZING' && <p>Analysis already started. Refresh the page to check its status.</p>}
+                  {file.lastError && <p className="storefront-error" role="alert">{file.lastError}</p>}
+                </div>
               </div>
               <div className="storefront-card-content">
-                <div className="storefront-card-heading">
-                  <div>
-                    <strong><FileVideo size={17} /> {file.originalFilename}</strong>
-                    <small>{(file.sizeBytes / 1024 / 1024).toFixed(2)} MB · {new Date(file.createdAt).toLocaleString()}</small>
-                  </div>
-                  <span className="storefront-status">{file.status}</span>
-                </div>
-                {file.status !== 'ANALYZED' && file.status !== 'ANALYZING' && (
-                  <button className="storefront-analyze" type="button" disabled={busy !== null}
-                    onClick={() => void analyze(file.id)}>
-                    {busy === file.id ? <LoaderCircle size={17} className="storefront-spin" /> : <ScanEye size={17} />}
-                    {busy === file.id ? 'Analyzing with Meta…' : 'Analyze with Meta Muse Spark'}
-                  </button>
-                )}
-                {file.status === 'ANALYZING' && <p>Analysis already started. Refresh the page to check its status.</p>}
-                {file.lastError && <p className="storefront-error" role="alert">{file.lastError}</p>}
                 <SegmentationPanel businessId={businessId} mediaId={file.id}
                   mimeType={file.mimeType} sizeBytes={file.sizeBytes} />
                 {file.findings && (

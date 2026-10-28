@@ -1,6 +1,7 @@
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
+import BusinessFlowNav from '../../app/BusinessFlowNav';
 import {
   ArrowRight,
   Building2,
@@ -118,21 +119,8 @@ export default function BusinessOnboarding() {
 
   return (
     <main className="onboarding-page">
-      <header className="site-header">
-        <div className="brand">
-          <div className="brand-icon">
-            <Radar size={25} />
-          </div>
 
-          <div>
-            <strong>S4 Neighborhood</strong>
-            <span>Intelligence</span>
-          </div>
-        </div>
-
-        <Link to="/dashboard" className="header-tag">Dashboard</Link>
-      </header>
-
+      <div className="s4-onboarding-nav"><BusinessFlowNav businessId={saved?.id ?? businessId} current="profile" /></div>
       <div className="onboarding-layout">
         <aside className="intro-panel">
           <div className="eyebrow">

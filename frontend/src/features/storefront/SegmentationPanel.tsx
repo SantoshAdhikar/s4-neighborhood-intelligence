@@ -17,7 +17,7 @@ function MaskViewer({ imageUrl, rawOutput }: { imageUrl: string; rawOutput: stri
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [showMasks, setShowMasks] = useState(true);
   const [showBoxes, setShowBoxes] = useState(true);
-  const [drawError, setDrawError] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const parsed = useMemo(() => {
     try {
@@ -31,6 +31,25 @@ function MaskViewer({ imageUrl, rawOutput }: { imageUrl: string; rawOutput: stri
 
   const boxes = useMemo(() => parsed.result ? recordsOfKind(parsed.result.records, 'box') : [], [parsed]);
   const masks = useMemo(() => parsed.result ? recordsOfKind(parsed.result.records, 'mask') : [], [parsed]);
+  const objects = useMemo(() => {
+    const ids = [...new Set([...boxes.map((box) => box.objectId), ...masks.map((mask) => mask.objectId)])];
+    return ids.map((id) => ({
+      id,
+      confidence: boxes.find((box) => box.objectId === id)?.confidence,
+    }));
+  }, [boxes, masks]);
+
+  // Mask decompression is pure data preparation; drawing the overlay is the only effect.
+  const decoded = useMemo(() => {
+    try {
+      return {
+        records: masks.map((record) => ({ record, raster: decodeMaskToRaster(record.mask) })),
+        error: '',
+      };
+    } catch (cause) {
+      return { records: [], error: cause instanceof Error ? cause.message : 'Could not decode SAM mask' };
+    }
+  }, [masks]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -40,79 +59,92 @@ function MaskViewer({ imageUrl, rawOutput }: { imageUrl: string; rawOutput: stri
     const context = canvas.getContext('2d');
     if (!context) return;
     context.clearRect(0, 0, canvas.width, canvas.height);
-    setDrawError('');
 
-    try {
-      if (showMasks) {
-        for (const [index, record] of masks.entries()) {
-          const raster = decodeMaskToRaster(record.mask);
-          const { width, height } = record.mask;
-          const maskCanvas = document.createElement('canvas');
-          maskCanvas.width = width;
-          maskCanvas.height = height;
-          const maskContext = maskCanvas.getContext('2d');
-          if (!maskContext) continue;
-          const pixels = maskContext.createImageData(width, height);
-          const red = index % 2 === 0 ? 30 : 235;
-          const green = index % 2 === 0 ? 184 : 125;
-          for (let pixel = 0; pixel < raster.length; pixel++) {
-            if (raster[pixel] !== 1) continue;
-            const offset = pixel * 4;
-            pixels.data[offset] = red;
-            pixels.data[offset + 1] = green;
-            pixels.data[offset + 2] = 245;
-            pixels.data[offset + 3] = 110;
-          }
-          maskContext.putImageData(pixels, 0, 0);
-          context.drawImage(maskCanvas, record.bounds.left, record.bounds.top,
-            record.bounds.right - record.bounds.left,
-            record.bounds.bottom - record.bounds.top);
+    if (showMasks) {
+      for (const [index, { record, raster }] of decoded.records.entries()) {
+        if (selectedId !== null && record.objectId !== selectedId) continue;
+        const { width, height } = record.mask;
+        const maskCanvas = document.createElement('canvas');
+        maskCanvas.width = width;
+        maskCanvas.height = height;
+        const maskContext = maskCanvas.getContext('2d');
+        if (!maskContext) continue;
+        const pixels = maskContext.createImageData(width, height);
+        const palette = [[0, 184, 185], [91, 126, 239], [230, 149, 66], [172, 100, 216]];
+        const color = palette[index % palette.length];
+        for (let pixel = 0; pixel < raster.length; pixel++) {
+          if (!raster[pixel]) continue;
+          const offset = pixel * 4;
+          pixels.data[offset] = color[0];
+          pixels.data[offset + 1] = color[1];
+          pixels.data[offset + 2] = color[2];
+          pixels.data[offset + 3] = selectedId ? 145 : 92;
         }
+        maskContext.putImageData(pixels, 0, 0);
+        context.drawImage(maskCanvas, record.bounds.left, record.bounds.top,
+          record.bounds.right - record.bounds.left,
+          record.bounds.bottom - record.bounds.top);
       }
-      if (showBoxes) {
-        context.lineWidth = Math.max(2, canvas.width / 500);
-        context.font = `${Math.max(14, Math.round(canvas.width / 45))}px sans-serif`;
-        for (const box of boxes) {
-          context.strokeStyle = '#ffcf50';
-          context.fillStyle = '#ffcf50';
-          context.strokeRect(box.left, box.top, box.right - box.left, box.bottom - box.top);
-          const confidence = box.confidence === undefined ? '' : ` ${Math.round(box.confidence * 100)}%`;
-          const caption = `Object ${box.objectId}${confidence}`;
-          const captionWidth = context.measureText(caption).width + 12;
-          const labelHeight = Math.max(21, canvas.width / 32);
-          const y = Math.max(0, box.top - labelHeight);
-          context.fillRect(box.left, y, captionWidth, labelHeight);
-          context.fillStyle = '#102348';
-          context.fillText(caption, box.left + 6, y + labelHeight - 6);
-        }
-      }
-    } catch (cause) {
-      setDrawError(cause instanceof Error ? cause.message : 'Could not decode SAM mask');
     }
-  }, [boxes, masks, dimensions, showBoxes, showMasks]);
+
+    if (showBoxes) {
+      context.lineWidth = Math.max(2, canvas.width / 450);
+      context.font = `600 ${Math.max(13, Math.round(canvas.width / 55))}px sans-serif`;
+      for (const box of boxes) {
+        if (selectedId !== null && box.objectId !== selectedId) continue;
+        context.strokeStyle = '#ffcb4a';
+        context.fillStyle = '#ffcb4a';
+        context.strokeRect(box.left, box.top, box.right - box.left, box.bottom - box.top);
+        const score = box.confidence === undefined ? '' : ` · ${Math.round(box.confidence * 100)}%`;
+        const label = `${box.objectId}${score}`;
+        const labelHeight = Math.max(20, Math.round(canvas.width / 35));
+        const labelWidth = context.measureText(label).width + 12;
+        const x = Math.min(Math.max(0, box.left), Math.max(0, canvas.width - labelWidth));
+        const y = Math.min(Math.max(0, box.top - labelHeight), Math.max(0, canvas.height - labelHeight));
+        context.fillRect(x, y, labelWidth, labelHeight);
+        context.fillStyle = '#102348';
+        context.fillText(label, x + 6, y + labelHeight - 6);
+      }
+    }
+  }, [boxes, decoded, dimensions, selectedId, showBoxes, showMasks]);
 
   return (
     <div className="sam-viewer">
       <div className="sam-viewer-options">
-        <label><input type="checkbox" checked={showMasks} onChange={(e) => setShowMasks(e.target.checked)} /> Masks</label>
-        <label><input type="checkbox" checked={showBoxes} onChange={(e) => setShowBoxes(e.target.checked)} /> Boxes</label>
-        <span>{boxes.length} object{boxes.length === 1 ? '' : 's'} detected</span>
+        <label><input type="checkbox" checked={showMasks} onChange={(event) => setShowMasks(event.target.checked)} /> Masks</label>
+        <label><input type="checkbox" checked={showBoxes} onChange={(event) => setShowBoxes(event.target.checked)} /> Boxes</label>
+        <span>{objects.length} object{objects.length === 1 ? '' : 's'} detected</span>
       </div>
+      {objects.length > 0 && (
+        <>
+          <p className="storefront-muted sam-viewer-guide">A prompt can match more than one region. Select an object to inspect it separately. Percentages are model scores, not verified accuracy.</p>
+          <div className="sam-object-list" role="group" aria-label="Choose detected object">
+            <button type="button" className={selectedId === null ? 'is-active' : ''}
+              aria-pressed={selectedId === null} onClick={() => setSelectedId(null)}>All objects</button>
+            {objects.map((object) => (
+              <button key={object.id} type="button" className={selectedId === object.id ? 'is-active' : ''}
+                aria-pressed={selectedId === object.id} onClick={() => setSelectedId(object.id)}>
+                Object {object.id}{object.confidence === undefined ? '' : ` · ${Math.round(object.confidence * 100)}%`}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       <div className="sam-image-stage">
-        <img src={imageUrl} alt="Storefront with SAM segmentation overlay"
+        <img src={imageUrl} alt="Original storefront photograph with selectable SAM segmentation regions"
           onLoad={(event) => setDimensions({
             width: event.currentTarget.naturalWidth,
             height: event.currentTarget.naturalHeight,
           })} />
         <canvas ref={canvasRef} aria-label="Meta SAM 3.1 segmentation overlay" />
       </div>
-      {boxes.length === 0 && <p className="storefront-muted">SAM reported no matching objects for this concept.</p>}
+      {objects.length === 0 && !parsed.error && <p className="storefront-muted">SAM reported no matching objects for this concept.</p>}
       {parsed.error && <p className="storefront-error">Could not parse saved SAM response: {parsed.error}</p>}
+      {decoded.error && <p className="storefront-error">Mask decoding failed: {decoded.error}</p>}
       {parsed.result && parsed.result.diagnostics.length > 0 && <p className="storefront-error">
-        SAM parser reported {parsed.result.diagnostics.length} diagnostic(s). Review these findings before relying on the overlay.
+        SAM parser reported {parsed.result.diagnostics.length} diagnostic(s). Review these before relying on the overlay.
       </p>}
-      {drawError && <p className="storefront-error">Mask rendering failed: {drawError}</p>}
-      <p className="storefront-muted">Overlay pixels and boxes come from the saved SAM response. They are model estimates, not measurements of physical dimensions.</p>
+      <p className="storefront-muted">Boxes and masks come from the saved SAM response. They are model estimates, not measurements of physical dimensions.</p>
     </div>
   );
 }
@@ -127,7 +159,6 @@ export default function SegmentationPanel({ businessId, mediaId, mimeType, sizeB
 
   useEffect(() => {
     let current = true;
-    setLoading(true);
     listSegmentations(businessId, mediaId)
       .then((results) => {
         if (!current) return;
@@ -205,7 +236,7 @@ export default function SegmentationPanel({ businessId, mediaId, mimeType, sizeB
               {active.lastError && <p className="storefront-error">{active.lastError}</p>}
               {active.status === 'PROCESSING' && <p className="storefront-muted">A prior SAM request is still marked processing. Check its backend status before retrying.</p>}
               {active.status === 'COMPLETED' && active.rawOutput !== null && (
-                <MaskViewer imageUrl={storefrontFileUrl(businessId, mediaId)} rawOutput={active.rawOutput} />
+                <MaskViewer key={active.id} imageUrl={storefrontFileUrl(businessId, mediaId)} rawOutput={active.rawOutput} />
               )}
             </div>
           )}

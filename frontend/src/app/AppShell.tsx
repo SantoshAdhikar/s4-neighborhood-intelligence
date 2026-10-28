@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router';
 import { Building2, LayoutDashboard, LogOut, Menu, Plus, Radar, X } from 'lucide-react';
-import { useAuth } from './AuthContext';
+import { useAuth } from './useAuth';
 
 export default function AppShell() {
   const { account, signOut } = useAuth();

@@ -23,7 +23,7 @@ button, input, textarea, select {
 
 button { cursor: pointer; }
 
-.onboarding-page { min-height: 100vh; }
+.onboarding-page { min-height: 0; }
 
 .site-header {
   height: 84px;
@@ -66,7 +66,7 @@ button { cursor: pointer; }
   gap: clamp(28px, 5vw, 76px);
   max-width: 1440px;
   margin: auto;
-  padding: 60px clamp(22px, 5vw, 80px);
+  padding: 16px clamp(22px, 5vw, 80px) 60px;
 }
 
 .intro-panel { padding-top: 38px; }
@@ -221,3 +221,4 @@ button { cursor: pointer; }
   .radius-options { grid-template-columns: 1fr; }
   .form-panel { padding: 20px; border-radius: 15px; }
 }
+

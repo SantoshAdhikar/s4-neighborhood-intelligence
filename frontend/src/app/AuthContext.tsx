@@ -1,14 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { currentAccount, loginAccount, logoutAccount, type Account } from '../services/authApi';
-
-type AuthValue = {
-  account: Account | null;
-  loading: boolean;
-  signIn(email: string, password: string): Promise<void>;
-  signOut(): Promise<void>;
-};
-
-const Context = createContext<AuthValue | null>(null);
+import { AuthContext, type AuthValue } from './authState';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null>(null);
@@ -33,11 +25,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async signOut() { await logoutAccount(); setAccount(null); },
   }), [account, loading]);
 
-  return <Context.Provider value={value}>{children}</Context.Provider>;
-}
-
-export function useAuth(): AuthValue {
-  const value = useContext(Context);
-  if (!value) throw new Error('AuthProvider is missing');
-  return value;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

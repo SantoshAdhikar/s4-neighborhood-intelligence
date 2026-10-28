@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router';
-import { AuthProvider, useAuth } from './app/AuthContext';
+import { AuthProvider } from './app/AuthContext';
+import { useAuth } from './app/useAuth';
 import AppShell from './app/AppShell';
 import AccountAccess from './features/auth/AccountAccess';
 import BusinessDashboard from './features/dashboard/BusinessDashboard';

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowRight, Building2, MapPinned, Plus, ScanEye } from 'lucide-react';
 import { listBusinesses } from '../../services/businessApi';
-import { useAuth } from '../../app/AuthContext';
+import { useAuth } from '../../app/useAuth';
 import type { BusinessProfile } from '../../types/business';
 
 export default function BusinessDashboard() {
