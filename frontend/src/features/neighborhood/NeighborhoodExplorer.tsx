@@ -104,6 +104,14 @@ export default function NeighborhoodExplorer({ businessId }: Props) {
           </button>
         </div>
 
+        <a
+          href={`/businesses/${businessId}/storefront`}
+          className="explorer-refresh"
+          style={{ width: 'fit-content', textDecoration: 'none', marginTop: 14 }}
+        >
+          Upload storefront evidence
+        </a>
+
         {error && (
           <div className="explorer-error" role="alert">
             {error}
