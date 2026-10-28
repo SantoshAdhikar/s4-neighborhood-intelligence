@@ -10,6 +10,7 @@ import {
 } from '../../services/storefrontApi';
 import type { BusinessProfile } from '../../types/business';
 import type { StorefrontMedia } from '../../types/storefront';
+import SegmentationPanel from './SegmentationPanel';
 import './StorefrontInspection.css';
 
 interface Props { businessId: string }
@@ -134,6 +135,8 @@ export default function StorefrontInspection({ businessId }: Props) {
                 )}
                 {file.status === 'ANALYZING' && <p>Analysis already started. Refresh the page to check its status.</p>}
                 {file.lastError && <p className="storefront-error" role="alert">{file.lastError}</p>}
+                <SegmentationPanel businessId={businessId} mediaId={file.id}
+                  mimeType={file.mimeType} sizeBytes={file.sizeBytes} />
                 {file.findings && (
                   <section className="storefront-findings">
                     <h3>Model-observed evidence</h3>
