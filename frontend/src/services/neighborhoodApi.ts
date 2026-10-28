@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient';
 
 import type { NeighborhoodReport } from '../types/neighborhood';
 
@@ -9,7 +10,7 @@ export function researchNeighborhood(
   const pending = requests.get(businessId);
   if (pending) return pending;
 
-  const request = fetch(
+  const request = apiFetch(
     `/api/businesses/${encodeURIComponent(businessId)}/neighborhood`,
     { method: 'POST' },
   ).then(async (response): Promise<NeighborhoodReport> => {

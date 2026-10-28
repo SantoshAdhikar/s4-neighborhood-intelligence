@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { ArrowLeft, Camera, FileVideo, LoaderCircle, ScanEye } from 'lucide-react';
 import { getBusiness } from '../../services/businessApi';
@@ -75,9 +76,9 @@ export default function StorefrontInspection({ businessId }: Props) {
     <main className="storefront-page">
       <header className="storefront-header">
         <strong><ScanEye size={23} /> S4 Neighborhood Intelligence</strong>
-        <a href={`/businesses/${businessId}/neighborhood`}>
+        <Link to={`/businesses/${businessId}/neighborhood`}>
           <ArrowLeft size={16} /> Neighborhood Explorer
-        </a>
+        </Link>
       </header>
       <div className="storefront-content">
         <p className="storefront-kicker">STEP 03 / VISUAL EVIDENCE</p>

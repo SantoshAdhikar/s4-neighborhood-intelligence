@@ -1,5 +1,6 @@
 
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { Link, useNavigate, useParams } from 'react-router';
 import {
   ArrowRight,
   Building2,
@@ -11,6 +12,7 @@ import {
 
 import {
   createBusiness,
+  getBusiness,
   updateBusiness,
 } from '../../services/businessApi';
 
@@ -33,10 +35,32 @@ const initialForm: BusinessProfileRequest = {
 };
 
 export default function BusinessOnboarding() {
+  const { businessId } = useParams();
+  const navigate = useNavigate();
   const [form, setForm] = useState<BusinessProfileRequest>(initialForm);
   const [saved, setSaved] = useState<BusinessProfile | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!businessId) return;
+    let active = true;
+    void getBusiness(businessId).then((profile) => {
+      if (!active) return;
+      setSaved(profile);
+      setForm({
+        name: profile.name, industry: profile.industry,
+        streetAddress: profile.streetAddress, city: profile.city,
+        state: profile.state, postalCode: profile.postalCode,
+        website: profile.website ?? '', services: profile.services,
+        primaryGoal: profile.primaryGoal,
+        researchRadiusMiles: profile.researchRadiusMiles,
+      });
+    }).catch((cause: unknown) => {
+      if (active) setError(cause instanceof Error ? cause.message : 'Unable to load business');
+    });
+    return () => { active = false; };
+  }, [businessId]);
 
   function handleChange(
     event: ChangeEvent<
@@ -89,6 +113,7 @@ export default function BusinessOnboarding() {
     setForm(initialForm);
     setSaved(null);
     setError('');
+    navigate('/businesses/new');
   }
 
   return (
@@ -105,9 +130,7 @@ export default function BusinessOnboarding() {
           </div>
         </div>
 
-        <span className="header-tag">
-          Business Intelligence Platform
-        </span>
+        <Link to="/dashboard" className="header-tag">Dashboard</Link>
       </header>
 
       <div className="onboarding-layout">
@@ -395,6 +418,14 @@ export default function BusinessOnboarding() {
                 </>
               )}
             </button>
+
+            {saved && (
+              <div className="s4-flow-links">
+                <Link to={`/businesses/${saved.id}/neighborhood`}>Explore neighborhood →</Link>
+                <Link to={`/businesses/${saved.id}/storefront`}>Inspect storefront →</Link>
+                <Link to="/dashboard">Dashboard →</Link>
+              </div>
+            )}
 
             {saved && (
               <button

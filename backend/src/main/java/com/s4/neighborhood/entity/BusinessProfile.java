@@ -40,6 +40,9 @@ public class BusinessProfile {
     @Column(name = "primary_goal", nullable = false, length = 1000)
     private String primaryGoal;
 
+    @Column(name = "owner_user_id")
+    private UUID ownerUserId;
+
     @Column(name = "research_radius_miles", nullable = false)
     private int researchRadiusMiles;
 
@@ -62,6 +65,8 @@ public class BusinessProfile {
     }
 
     public UUID getId() { return id; }
+    public UUID getOwnerUserId() { return ownerUserId; }
+    public void setOwnerUserId(UUID value) { ownerUserId = value; }
     public String getName() { return name; }
     public void setName(String value) { name = value; }
     public String getIndustry() { return industry; }

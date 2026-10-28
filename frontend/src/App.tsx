@@ -1,17 +1,46 @@
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router';
+import { AuthProvider, useAuth } from './app/AuthContext';
+import AppShell from './app/AppShell';
+import AccountAccess from './features/auth/AccountAccess';
+import BusinessDashboard from './features/dashboard/BusinessDashboard';
 import BusinessOnboarding from './features/onboarding/BusinessOnboarding';
 import NeighborhoodExplorer from './features/neighborhood/NeighborhoodExplorer';
 import StorefrontInspection from './features/storefront/StorefrontInspection';
+import './styles/workspace.css';
+
+function ProtectedWorkspace() {
+  const { account, loading } = useAuth();
+  if (loading) return <div className="s4-loading">Loading your S4 workspace…</div>;
+  if (!account) return <Navigate to="/login" replace />;
+  return <AppShell />;
+}
+
+function NeighborhoodRoute() {
+  const { businessId } = useParams();
+  return businessId ? <NeighborhoodExplorer businessId={businessId} /> : <Navigate to="/dashboard" />;
+}
+
+function StorefrontRoute() {
+  const { businessId } = useParams();
+  return businessId ? <StorefrontInspection businessId={businessId} /> : <Navigate to="/dashboard" />;
+}
 
 export default function App() {
-  const storefront = window.location.pathname.match(
-    /^\/businesses\/([0-9a-fA-F-]{36})\/storefront\/?$/,
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<AccountAccess />} />
+          <Route element={<ProtectedWorkspace />}>
+            <Route path="/dashboard" element={<BusinessDashboard />} />
+            <Route path="/businesses/new" element={<BusinessOnboarding />} />
+            <Route path="/businesses/:businessId/edit" element={<BusinessOnboarding />} />
+            <Route path="/businesses/:businessId/neighborhood" element={<NeighborhoodRoute />} />
+            <Route path="/businesses/:businessId/storefront" element={<StorefrontRoute />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
-  if (storefront) return <StorefrontInspection businessId={storefront[1]} />;
-
-  const neighborhood = window.location.pathname.match(
-    /^\/businesses\/([0-9a-fA-F-]{36})\/neighborhood\/?$/,
-  );
-  if (neighborhood) return <NeighborhoodExplorer businessId={neighborhood[1]} />;
-
-  return <BusinessOnboarding />;
 }

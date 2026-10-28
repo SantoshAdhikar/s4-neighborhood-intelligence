@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 
 import { useEffect, useState } from 'react';
 import {
@@ -70,13 +71,13 @@ export default function NeighborhoodExplorer({ businessId }: Props) {
   return (
     <main className="explorer-page">
       <header className="explorer-header">
-        <a className="explorer-brand" href="/">
+        <Link className="explorer-brand" to="/dashboard">
           <Radar size={24} />
           S4 Neighborhood Intelligence
-        </a>
-        <a className="explorer-link" href="/">
-          Back to onboarding
-        </a>
+        </Link>
+        <Link className="explorer-link" to="/dashboard">
+          Back to dashboard
+        </Link>
       </header>
 
       <div className="explorer-content">
@@ -104,13 +105,13 @@ export default function NeighborhoodExplorer({ businessId }: Props) {
           </button>
         </div>
 
-        <a
-          href={`/businesses/${businessId}/storefront`}
+        <Link
+          to={`/businesses/${businessId}/storefront`}
           className="explorer-refresh"
           style={{ width: 'fit-content', textDecoration: 'none', marginTop: 14 }}
         >
           Upload storefront evidence
-        </a>
+        </Link>
 
         {error && (
           <div className="explorer-error" role="alert">

@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient';
 import type { StorefrontMedia } from '../types/storefront';
 
 function path(businessId: string) {
@@ -21,20 +22,20 @@ export function storefrontFileUrl(businessId: string, mediaId: string) {
 }
 
 export async function listStorefrontMedia(businessId: string) {
-  return readResponse<StorefrontMedia[]>(await fetch(path(businessId)));
+  return readResponse<StorefrontMedia[]>(await apiFetch(path(businessId)));
 }
 
 export async function uploadStorefrontMedia(businessId: string, file: File) {
   const body = new FormData();
   body.append('file', file);
-  return readResponse<StorefrontMedia>(await fetch(path(businessId), {
+  return readResponse<StorefrontMedia>(await apiFetch(path(businessId), {
     method: 'POST',
     body,
   }));
 }
 
 export async function analyzeStorefrontMedia(businessId: string, mediaId: string) {
-  return readResponse<StorefrontMedia>(await fetch(
+  return readResponse<StorefrontMedia>(await apiFetch(
     `${path(businessId)}/${encodeURIComponent(mediaId)}/analyze`,
     { method: 'POST' },
   ));

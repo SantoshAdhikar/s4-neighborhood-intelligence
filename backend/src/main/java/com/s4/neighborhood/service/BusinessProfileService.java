@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.NoSuchElementException;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -27,13 +28,20 @@ public class BusinessProfileService {
     }
 
     @Transactional
-    public BusinessProfileResponse create(BusinessProfileRequest request) {
+    public BusinessProfileResponse create(BusinessProfileRequest request, UUID ownerId) {
         validateRadius(request.researchRadiusMiles());
 
         BusinessProfile business = new BusinessProfile();
+        business.setOwnerUserId(ownerId);
         mapper.updateEntity(business, request);
 
         return mapper.toResponse(repository.saveAndFlush(business));
+    }
+
+    @Transactional(readOnly = true)
+    public List<BusinessProfileResponse> list(UUID ownerId) {
+        return repository.findByOwnerUserIdOrderByCreatedAtDesc(ownerId)
+                .stream().map(mapper::toResponse).toList();
     }
 
     @Transactional(readOnly = true)

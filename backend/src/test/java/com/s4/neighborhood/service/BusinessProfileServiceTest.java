@@ -56,7 +56,7 @@ class BusinessProfileServiceTest {
         when(repository.saveAndFlush(any(BusinessProfile.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        var response = service.create(validRequest);
+        var response = service.create(validRequest, UUID.randomUUID());
 
         assertEquals("Golden Brows", response.name());
         assertEquals(4, response.researchRadiusMiles());
@@ -80,7 +80,7 @@ class BusinessProfileServiceTest {
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> service.create(request)
+                () -> service.create(request, UUID.randomUUID())
         );
 
         verifyNoInteractions(repository);
