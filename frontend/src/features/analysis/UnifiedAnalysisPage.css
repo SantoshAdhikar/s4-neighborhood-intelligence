@@ -47,3 +47,10 @@
 .s4-unified-footer{display:flex;flex-wrap:wrap;gap:18px;border-top:1px solid #dce4ef;padding-top:25px;margin-top:35px;font-size:.81rem;color:#6d7c91}.s4-unified-footer a{color:#1c4788}
 .s4-spin{animation:s4-unified-spin 1s linear infinite}@keyframes s4-unified-spin{to{transform:rotate(360deg)}}
 @media(max-width:850px){.s4-unified-progress-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.s4-unified-web-grid,.s4-unified-opportunities{grid-template-columns:1fr}.s4-unified-two{grid-template-columns:1fr}.s4-unified-page{padding:24px 15px 55px}.s4-unified-form,.s4-unified-progress,.s4-unified-websites,.s4-unified-report{padding:18px}}
+
+.s4-unified-coverage{display:flex;gap:12px;flex-wrap:wrap;margin:17px 0 9px}
+.s4-unified-coverage span{border:1px solid #dfe6f0;background:#f7f9fd;border-radius:10px;padding:9px 12px;font-size:.8rem;color:#455974}
+.s4-unified-coverage strong{font-size:1.08rem;color:#152950}
+.s4-unified-shortfall{font-size:.83rem;padding:12px 14px;background:#fff8e8;border:1px solid #f2e2bf;border-radius:10px;color:#6b5325}
+.s4-unified-source-note{font-size:.8rem;color:#65748a;margin:11px 0}
+.s4-unified-links{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}

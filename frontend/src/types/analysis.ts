@@ -1,12 +1,16 @@
 export interface WebsiteRecord {
-  kind: 'OWNER_WEBSITE' | 'NEARBY_WEBSITE';
+  kind: 'OWNER_WEBSITE' | 'NEARBY_WEBSITE' | 'NEARBY_COMPETITOR';
   businessName: string;
   url: string;
   title: string | null;
   observedSummary: string | null;
-  status: 'FETCHED' | 'BLOCKED' | 'UNAVAILABLE';
+  status: 'FETCHED' | 'BLOCKED' | 'UNAVAILABLE' | 'NO_WEBSITE' | 'SKIPPED';
   note: string | null;
   fetchedAt: string;
+  osmSourceUrl: string | null;
+  category: string | null;
+  distanceMiles: number | null;
+  matchLevel: 'SAME_INDUSTRY' | 'RELATED_INDUSTRY' | null;
 }
 
 export interface AnalysisRun {

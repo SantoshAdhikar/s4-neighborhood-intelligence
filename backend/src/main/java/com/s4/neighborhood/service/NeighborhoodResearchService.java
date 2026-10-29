@@ -18,7 +18,7 @@ import java.util.*;
 @Service
 public class NeighborhoodResearchService {
     private static final Duration CACHE_AGE = Duration.ofHours(24);
-    private static final int MAX_DISPLAYED = 80;
+    private static final int MAX_DISPLAYED = 160;
 
     private final BusinessProfileRepository businesses;
     private final NeighborhoodResearchRepository researches;

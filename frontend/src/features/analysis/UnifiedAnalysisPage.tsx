@@ -103,11 +103,16 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
     return () => { active = false; };
   }, [businessId]);
 
+  const activeRunId =
+    run?.status === 'QUEUED' || run?.status === 'RUNNING'
+      ? run.id
+      : null;
+
   useEffect(() => {
-    if (!run || (run.status !== 'QUEUED' && run.status !== 'RUNNING')) return;
+    if (!activeRunId) return;
     let active = true;
     const timer = window.setInterval(() => {
-      void readAnalysis(businessId, run.id).then((data) => {
+      void readAnalysis(businessId, activeRunId).then((data) => {
         if (!active) return;
         setRun(data);
         if (data.status === 'COMPLETED' && data.reportId) {
@@ -116,7 +121,7 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
       }).catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Could not refresh run status'); });
     }, 1600);
     return () => { active = false; window.clearInterval(timer); };
-  }, [businessId, run?.id, run?.status]);
+  }, [businessId, activeRunId]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -142,6 +147,10 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
   }
 
   const running = submitting || run?.status === 'QUEUED' || run?.status === 'RUNNING';
+  const competitors = run?.websites.filter(site => site.kind === 'NEARBY_COMPETITOR') ?? [];
+  const legacyResearch = run?.websites.some(site => site.kind === 'NEARBY_WEBSITE') && competitors.length === 0;
+  const sameIndustryCount = competitors.filter(site => site.matchLevel === 'SAME_INDUSTRY').length;
+  const fetchedCount = competitors.filter(site => site.status === 'FETCHED').length;
   const freshReport = run?.status === 'COMPLETED' && Boolean(run.reportId && report?.id === run.reportId);
 
   return <main className="s4-unified-page">
@@ -171,7 +180,7 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
       <textarea id="s4-unified-feedback" rows={3} maxLength={1500} value={customerFeedback} onChange={event => setCustomerFeedback(event.target.value)} placeholder="Summarize customer requests or feedback without names or personal information" />
       <small>We won't scrape Google reviews. Owner-provided feedback is labeled unverified, not a representative review sample.</small>
       <div className="s4-unified-cost">
-        <div><strong>Free-only research and local AI</strong><p>Neighborhood data, accessible website summaries, and a local Ollama action report when qwen2.5:7b is running. No Meta requests. A newly uploaded photo is saved locally but not visually analyzed in free-only mode; saved Muse findings can still be reused.</p></div>
+        <div><strong>Free-only research and local AI</strong><p>Up to 10 nearby same-industry or clearly labeled related businesses, based on available OSM listings; not a guarantee of 10 functioning websites. Neighborhood data, accessible website summaries, and a local Ollama action report when qwen2.5:7b is running. No Meta requests. A newly uploaded photo is saved locally but not visually analyzed in free-only mode; saved Muse findings can still be reused.</p></div>
         <label className="s4-unified-toggle"><input type="checkbox" checked={useMeta} onChange={event => setUseMeta(event.target.checked)} /><span><Coins size={17}/> Include Meta AI analysis (uses promotional credits)</span></label>
         {useMeta && <label className="s4-unified-toggle"><input type="checkbox" checked={segmentSign} onChange={event => setSegmentSign(event.target.checked)}/><span>Also run SAM 3.1 sign segmentation if needed (additional credit usage)</span></label>}
       </div>
@@ -181,14 +190,30 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
     {error && <p role="alert" className="s4-form-error"><CircleAlert size={16}/> {error}</p>}
     {run && <Progress run={run}/>}
     {run && run.websites.length > 0 && <section className="s4-unified-websites">
-      <div className="s4-unified-section-head"><div><p className="s4-kicker">FREE WEBSITE RESEARCH</p><h2>What we found online</h2><p>Public homepage observations only, not ratings or a full marketing audit.</p></div></div>
-      <div className="s4-unified-web-grid">{run.websites.map((site,index) => <article key={`${site.url}-${index}`}>
-        <span>{site.kind === 'OWNER_WEBSITE' ? 'YOUR WEBSITE' : 'NEARBY BUSINESS'}</span>
-        <h3>{site.businessName}</h3><small>{site.status}</small>
+      <div className="s4-unified-section-head"><div><p className="s4-kicker">FREE COMPETITOR & WEBSITE RESEARCH</p>
+        <h2>Nearby industry comparison</h2>
+        <p>Target: 10 category-matched businesses within your saved search radius. No invented listings, ratings, reviews or sales estimates.</p></div></div>
+      <div className="s4-unified-coverage" role="status">
+        <span><strong>{competitors.length}/10</strong> candidates found</span>
+        <span><strong>{sameIndustryCount}</strong> same-industry matches</span>
+        <span><strong>{competitors.length - sameIndustryCount}</strong> related-sector matches</span>
+        <span><strong>{fetchedCount}</strong> competitor homepages inspected</span>
+      </div>
+      {legacyResearch && <p className="s4-unified-shortfall">This is an older analysis that inspected up to 3 nearby websites. Start a new analysis to build the 10-business shortlist.</p>}
+      {!legacyResearch && competitors.length < 10 && <p className="s4-unified-shortfall">The saved OSM search has fewer than 10 matching businesses. S4 won't fill the list with unrelated shops. You can expand the research radius in Business Settings and run a new analysis.</p>}
+      <p className="s4-unified-source-note">Matches use OSM categories and business names; exact service overlap is not independently verified. A missing website does not imply the business has no website.</p>
+      <div className="s4-unified-web-grid">{run.websites.map((site,index) => <article key={`${site.url}-${index}-${site.businessName}`}>
+        <span>{site.kind === 'OWNER_WEBSITE' ? 'YOUR WEBSITE' : site.matchLevel === 'RELATED_INDUSTRY' ? 'RELATED SECTOR · NOT VERIFIED DIRECT COMPETITOR' : 'SAME INDUSTRY CANDIDATE'}</span>
+        <h3>{site.businessName}</h3>
+        {site.distanceMiles != null && <small>{site.distanceMiles.toFixed(2)} miles · {site.category ?? 'OSM category unavailable'}</small>}
+        <small>Website: {site.status === 'NO_WEBSITE' ? 'Not listed in OSM' : site.status === 'FETCHED' ? 'Homepage inspected' : site.status === 'BLOCKED' ? 'Access disallowed' : site.status === 'SKIPPED' ? 'Inspection skipped' : 'Unavailable'}</small>
         {site.title && <p><strong>Page:</strong> {site.title}</p>}
         {site.observedSummary && <p>{site.observedSummary}</p>}
         {site.note && <small>{site.note}</small>}
-        {site.status === 'FETCHED' && <a href={site.url} target="_blank" rel="noopener noreferrer">Open source ↗</a>}
+        <div className="s4-unified-links">
+          {site.status === 'FETCHED' && <a href={site.url} target="_blank" rel="noopener noreferrer">Open homepage</a>}
+          {site.osmSourceUrl && <a href={site.osmSourceUrl} target="_blank" rel="noopener noreferrer">View OSM listing</a>}
+        </div>
       </article>)}</div>
     </section>}
     {freshReport && report && <Report report={report}/>}

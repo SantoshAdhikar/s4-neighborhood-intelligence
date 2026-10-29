@@ -11,5 +11,6 @@ public record AnalysisRunResponse(
         Instant createdAt, Instant completedAt, List<WebsiteRecord> websites
 ) {
     public record WebsiteRecord(String kind, String businessName, String url, String title,
-                                String observedSummary, String status, String note, Instant fetchedAt) {}
+                                String observedSummary, String status, String note, Instant fetchedAt,
+                                String osmSourceUrl, String category, Double distanceMiles, String matchLevel) {}
 }

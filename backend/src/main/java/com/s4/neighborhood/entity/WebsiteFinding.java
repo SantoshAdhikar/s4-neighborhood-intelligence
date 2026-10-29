@@ -27,6 +27,14 @@ public class WebsiteFinding {
     private String status;
     @Column(length = 350)
     private String note;
+    @Column(name = "osm_source_url", length = 250)
+    private String osmSourceUrl;
+    @Column(length = 150)
+    private String category;
+    @Column(name = "distance_miles")
+    private Double distanceMiles;
+    @Column(name = "match_level", length = 24)
+    private String matchLevel;
     @Column(name = "fetched_at", nullable = false)
     private Instant fetchedAt = Instant.now();
 
@@ -49,5 +57,13 @@ public class WebsiteFinding {
     public void setStatus(String v) { status=v; }
     public String getNote() { return note; }
     public void setNote(String v) { note=v; }
+    public String getOsmSourceUrl() { return osmSourceUrl; }
+    public void setOsmSourceUrl(String v) { osmSourceUrl = v; }
+    public String getCategory() { return category; }
+    public void setCategory(String v) { category = v; }
+    public Double getDistanceMiles() { return distanceMiles; }
+    public void setDistanceMiles(Double v) { distanceMiles = v; }
+    public String getMatchLevel() { return matchLevel; }
+    public void setMatchLevel(String v) { matchLevel = v; }
     public Instant getFetchedAt() { return fetchedAt; }
 }

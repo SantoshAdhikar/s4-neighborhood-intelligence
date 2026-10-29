@@ -19,17 +19,13 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
-import java.util.UUID;
 
 @Service
 public class WebsiteResearchService {
     private static final int MAX_HTML_BYTES = 1_048_576;
-    private static final String USER_AGENT = "S4NeighborhoodResearch/0.1 (+owner-initiated local business study)";
+    private static final String USER_AGENT = "S4NeighborhoodIntelligence/0.1 (+https://github.com/SantoshAdhikar/s4-neighborhood-intelligence)";
     private final WebsiteFindingRepository findings;
     private final NeighborhoodResearchRepository researches;
     private final NearbyPlaceRepository places;
@@ -45,23 +41,46 @@ public class WebsiteResearchService {
         this.places = places;
     }
 
-    // Bounded, owner-initiated homepage inspections only. No Google review scraping.
+    // At most ten matching OSM records, with at most one respectful homepage check per host.
     public void research(AnalysisRun run, BusinessProfile business) {
         if (business.getWebsite() != null && !business.getWebsite().isBlank()) {
             inspect(run, "OWNER_WEBSITE", business.getName(), business.getWebsite());
         }
         var latest = researches.findTopByBusinessIdOrderByFetchedAtDesc(business.getId());
         if (latest.isEmpty()) return;
-        Set<String> hosts = new HashSet<>();
-        if (business.getWebsite() != null) hosts.add(hostname(business.getWebsite()));
-        int researched = 0;
-        for (NearbyPlace place : places.findByResearchIdOrderByDistanceMilesAsc(latest.get().getId())) {
-            if (researched >= 3) break;
-            if (place.getWebsite() == null || place.getWebsite().isBlank()) continue;
-            String host = hostname(place.getWebsite());
-            if (host.isBlank() || !hosts.add(host)) continue;
-            inspect(run, "NEARBY_WEBSITE", place.getName(), place.getWebsite());
-            researched++;
+        java.util.Set<String> seenHosts = new java.util.HashSet<>();
+        if (business.getWebsite() != null) seenHosts.add(hostname(business.getWebsite()));
+
+        var matches = CompetitorSelectionService.select(business,
+                places.findByResearchIdOrderByDistanceMilesAsc(latest.get().getId()));
+        for (var match : matches) {
+            NearbyPlace place = match.place();
+            String site = place.getWebsite();
+            WebsiteFinding finding = new WebsiteFinding();
+            finding.setRunId(run.getId());
+            finding.setBusinessId(run.getBusinessId());
+            finding.setKind("NEARBY_COMPETITOR");
+            finding.setBusinessName(limit(place.getName(), 160));
+            finding.setOsmSourceUrl(place.getSourceUrl());
+            finding.setCategory(limit(place.getCategory(), 150));
+            finding.setDistanceMiles(place.getDistanceMiles());
+            finding.setMatchLevel(match.matchLevel());
+            finding.setUrl(place.getSourceUrl());
+
+            if (site == null || site.isBlank()) {
+                finding.setStatus("NO_WEBSITE");
+                finding.setNote("OSM has no website for this candidate. This does not mean the business lacks a website.");
+            } else {
+                String host = hostname(site);
+                if (host.isBlank() || !seenHosts.add(host)) {
+                    finding.setStatus("SKIPPED");
+                    finding.setNote("Homepage not fetched: invalid or already inspected website host.");
+                } else {
+                    finding.setUrl(limit(site, 500));
+                    inspectHomepage(finding, site);
+                }
+            }
+            findings.saveAndFlush(finding);
         }
     }
 
@@ -72,6 +91,11 @@ public class WebsiteResearchService {
         finding.setKind(kind);
         finding.setBusinessName(limit(name, 160));
         finding.setUrl(limit(address, 500));
+        inspectHomepage(finding, address);
+        findings.saveAndFlush(finding);
+    }
+
+    private void inspectHomepage(WebsiteFinding finding, String address) {
         try {
             URI uri = checkedUri(address);
             if (!allowedByRobots(uri)) {
@@ -96,8 +120,8 @@ public class WebsiteResearchService {
                         finding.setTitle(limit(document.title(), 250));
                         finding.setObservedSummary(extract(document));
                         finding.setNote(truncated
-                                ? "Partial homepage: first 1 MiB of HTML inspected. Later content may be missing; no full service or SEO audit."
-                                : "Homepage HTML only. Missing information is not proof a service is absent.");
+                                ? "Partial homepage: first 1 MiB of HTML inspected. Later content may be missing; no full audit."
+                                : "Homepage HTML only. Missing labels do not prove a service is absent.");
                     }
                 }
             }
@@ -105,7 +129,6 @@ public class WebsiteResearchService {
             finding.setStatus("UNAVAILABLE");
             finding.setNote("Website could not be inspected safely; no conclusion about business quality.");
         }
-        findings.saveAndFlush(finding);
     }
 
     private HttpResponse<InputStream> request(URI uri) throws Exception {
@@ -206,7 +229,8 @@ public class WebsiteResearchService {
                 ". These are extracted page labels, not a full usability, SEO, or service audit.", 1200);
     }
     private static String hostname(String address) {
-        try { return URI.create(address.strip()).getHost().toLowerCase(Locale.ROOT); }
+        try { return URI.create(address.strip()).getHost().toLowerCase(Locale.ROOT)
+                .replaceFirst("^www\\.", ""); }
         catch (Exception ignored) { return ""; }
     }
     private static String limit(String value, int length) {

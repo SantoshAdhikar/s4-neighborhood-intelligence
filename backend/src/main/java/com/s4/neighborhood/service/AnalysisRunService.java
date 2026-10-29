@@ -216,7 +216,8 @@ public class AnalysisRunService {
     private AnalysisRunResponse response(AnalysisRun run) {
         var findings = websites.findByRunIdOrderByFetchedAtAsc(run.getId()).stream()
                 .map(f -> new AnalysisRunResponse.WebsiteRecord(f.getKind(), f.getBusinessName(), f.getUrl(),
-                        f.getTitle(), f.getObservedSummary(), f.getStatus(), f.getNote(), f.getFetchedAt()))
+                        f.getTitle(), f.getObservedSummary(), f.getStatus(), f.getNote(), f.getFetchedAt(),
+                        f.getOsmSourceUrl(), f.getCategory(), f.getDistanceMiles(), f.getMatchLevel()))
                 .toList();
         return new AnalysisRunResponse(run.getId(), run.getStatus(), run.getStep(), run.getDetail(),
                 run.getGoal(), run.getWebsite(), run.getMediaId(), run.getReportId(), run.isUseMeta(), run.isSegmentSign(),

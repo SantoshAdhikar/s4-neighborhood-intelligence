@@ -19,6 +19,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -119,14 +121,35 @@ public class EvidenceSourceService {
         }
         List<NearbyPlace> nearby = places.findByResearchIdOrderByDistanceMilesAsc(research.getId());
         if (nearby.isEmpty()) limitations.add("No nearby businesses were found in the saved OpenStreetMap research.");
-        for (NearbyPlace place : nearby.stream().limit(20).toList()) {
+        var latestRun = analysisRuns.findTopByBusinessIdOrderByCreatedAtDesc(business.getId());
+        Set<String> shortlisted = new HashSet<>();
+        latestRun.ifPresent(run -> websiteFindings.findByRunIdOrderByFetchedAtAsc(run.getId()).stream()
+                .map(item -> item.getOsmSourceUrl())
+                .filter(url -> url != null && !url.isBlank())
+                .forEach(shortlisted::add));
+        // Include every shortlisted candidate first; then nearby context up to 20 total.
+        List<NearbyPlace> ranked = new ArrayList<>();
+        nearby.stream().filter(place -> shortlisted.contains(place.getSourceUrl())).forEach(ranked::add);
+        nearby.stream().filter(place -> !shortlisted.contains(place.getSourceUrl())).forEach(ranked::add);
+        for (NearbyPlace place : ranked.stream().limit(14).toList()) {
             sources.add(new Source("osm-" + place.getOsmType() + "-" + place.getOsmId(), "OSM_PLACE",
                     "OSM listing: " + limited(place.getName(), 150) + "; category "
                             + limited(place.getCategory(), 80) + "; approximately "
                             + place.getDistanceMiles() + " miles from the researched location. "
+                            + (shortlisted.contains(place.getSourceUrl())
+                            ? "Selected for category-based competitor review. Specific service overlap is not independently verified. "
+                            : "Nearby context only. ")
                             + (place.getWebsite() == null ? "No website recorded in this listing."
                             : "Listing contains a website URL."),
                     place.getSourceUrl(), research.getFetchedAt()));
+        }
+        if (shortlisted.isEmpty()) {
+            limitations.add("No same-industry businesses were selected from the saved OpenStreetMap snapshot; verify its category coverage or research radius.");
+        } else {
+            limitations.add("Competitors were shortlisted using business categories and names. Same-category listings do not prove identical services or commercial competition.");
+            if (shortlisted.size() < CompetitorSelectionService.TARGET_COUNT) {
+                limitations.add("Only " + shortlisted.size() + " potentially relevant businesses were identified in the saved search radius, fewer than the target of 10.");
+            }
         }
         analysisRuns.findTopByBusinessIdOrderByCreatedAtDesc(business.getId()).ifPresent(run -> {
             if (run.getCustomerFeedback() != null && !run.getCustomerFeedback().isBlank()) {
@@ -141,11 +164,14 @@ public class EvidenceSourceService {
                     sources.add(new Source("website-" + stableId(website.getUrl()), website.getKind(),
                             "Public homepage metadata for " + limited(website.getBusinessName(), 90)
                                     + "; title: " + limited(website.getTitle(), 150)
-                                    + "; extracted labels: " + limited(website.getObservedSummary(), 950),
+                                    + "; extracted labels: " + limited(website.getObservedSummary(), 650),
                             website.getUrl(), website.getFetchedAt().truncatedTo(java.time.temporal.ChronoUnit.DAYS)));
+                } else if ("NO_WEBSITE".equals(website.getStatus())) {
+                    limitations.add("OSM has no website on record for " + limited(website.getBusinessName(), 100)
+                            + "; no claim is made about the actual existence of a website.");
                 } else {
                     limitations.add("Website research for " + limited(website.getBusinessName(), 100)
-                            + " was unavailable or disallowed. No conclusions were drawn from that page.");
+                            + " was unavailable, skipped or disallowed. No conclusions were drawn from that page.");
                 }
             }
         });
