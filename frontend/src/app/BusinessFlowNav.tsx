@@ -1,7 +1,7 @@
 import { Link, NavLink } from 'react-router';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 
-type Step = 'profile' | 'neighborhood' | 'storefront';
+type Step = 'profile' | 'neighborhood' | 'storefront' | 'evidence';
 
 export default function BusinessFlowNav({ businessId, current }: { businessId?: string; current: Step }) {
   return (
@@ -18,6 +18,9 @@ export default function BusinessFlowNav({ businessId, current }: { businessId?: 
             <ChevronRight size={14} aria-hidden="true" />
             <NavLink to={`/businesses/${businessId}/storefront`} aria-current={current === 'storefront' ? 'step' : undefined}
               className={current === 'storefront' ? 'is-current' : ''}>03 Visual evidence</NavLink>
+            <ChevronRight size={14} aria-hidden="true" />
+            <NavLink to={`/businesses/${businessId}/evidence`} aria-current={current === 'evidence' ? 'step' : undefined}
+              className={current === 'evidence' ? 'is-current' : ''}>04 Action report</NavLink>
           </>
         ) : (
           <span className="is-current">01 Create business profile</span>

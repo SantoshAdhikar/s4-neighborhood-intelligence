@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface NeighborhoodResearchRepository extends JpaRepository<NeighborhoodResearch, UUID> {
+    Optional<NeighborhoodResearch> findTopByBusinessIdOrderByFetchedAtDesc(UUID businessId);
     Optional<NeighborhoodResearch> findTopByBusinessIdAndAddressKeyAndRadiusMilesOrderByFetchedAtDesc(
             UUID businessId, String addressKey, int radiusMiles);
 }

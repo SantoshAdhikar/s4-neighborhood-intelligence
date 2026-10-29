@@ -1,0 +1,39 @@
+.s4-evidence-page { max-width: 1420px; margin: 0 auto; padding: 35px clamp(18px, 4vw, 62px) 70px; color: #183150; }
+.s4-evidence-hero { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; }
+.s4-evidence-hero h1 { font-size: clamp(26px, 3vw, 38px); color: #10264a; margin: 6px 0 8px; }
+.s4-evidence-hero p:not(.s4-kicker), .s4-evidence-intro { color: #62758e; line-height: 1.65; font-size: 14px; }
+.s4-evidence-generate { border: 0; color: white; background: #10264a; border-radius: 10px; padding: 14px 18px; display: inline-flex; gap: 9px; align-items: center; font-weight: 700; cursor: pointer; }
+.s4-evidence-generate:disabled { opacity: .55; cursor: not-allowed; }
+.s4-evidence-disclosure { margin: 23px 0; padding: 14px; background: #fcf8ef; border: 1px solid #eadab5; border-radius: 10px; font-size: 13px; display: flex; gap: 10px; align-items: center; line-height: 1.55; }
+.s4-evidence-summary { display: flex; flex-wrap: wrap; gap: 12px 24px; background: white; border: 1px solid #e2e7f0; padding: 16px 18px; border-radius: 12px; font-size: 12px; color: #60718b; }
+.s4-evidence-summary span { display: inline-flex; gap: 8px; align-items: center; }
+.s4-evidence-empty { background: white; border: 1px solid #e2e7f0; padding: 32px; border-radius: 16px; margin-top: 26px; }
+.s4-evidence-empty h2 { margin: 15px 0 6px; font-size: 22px; }
+.s4-evidence-empty p { color: #657894; }
+.s4-evidence-empty > div { display: flex; flex-wrap: wrap; gap: 15px; }
+.s4-evidence-empty a { display: inline-flex; align-items: center; gap: 8px; color: #10264a; font-weight: 700; text-decoration: none; }
+.s4-evidence-section { margin-top: 38px; }
+.s4-evidence-section h2 { font-size: 23px; margin-bottom: 7px; color: #10264a; }
+.s4-evidence-opportunities { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17px; margin-top: 20px; }
+.s4-opportunity { background: white; border: 1px solid #dee5ee; border-radius: 15px; padding: 22px; display: flex; flex-direction: column; gap: 11px; }
+.s4-opportunity-head { display: flex; justify-content: space-between; gap: 6px; color: #99703b; font-weight: 800; font-size: 11px; text-transform: uppercase; }
+.s4-opportunity h3 { font-size: 19px; margin: 1px 0; color: #122e50; }
+.s4-opportunity p, .s4-action-day p { font-size: 13px; line-height: 1.7; color: #475c75; margin: 0; }
+.s4-opportunity strong, .s4-day-measure strong { font-size: 12px; color: #233d5f; }
+.s4-source-tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 5px; }
+.s4-source-tags a { display: inline-flex; align-items: center; gap: 5px; padding: 7px 9px; border-radius: 20px; background: #f0f4f9; color: #405b7e; text-decoration: none; font-size: 11px; }
+.s4-source-tags a:hover { background: #e3eaf3; }
+.s4-opportunity-uncertainty, .s4-opportunity-measure { border-top: 1px solid #ebeff5; padding-top: 10px; }
+.s4-action-days { display: grid; gap: 10px; margin-top: 18px; }
+.s4-action-day { display: grid; grid-template-columns: 78px 1fr; background: white; border: 1px solid #e1e6ed; padding: 18px; gap: 14px; border-radius: 12px; }
+.s4-day-number { color: #a47436; font-size: 13px; font-weight: 800; }
+.s4-action-day h3 { font-size: 16px; margin: 0 0 5px; }
+.s4-day-measure { margin-top: 8px; font-size: 12px; color: #485e77; }
+.s4-evidence-sources, .s4-evidence-limitations { background: white; border: 1px solid #e1e7ee; padding: 24px; border-radius: 14px; }
+.s4-evidence-source-row { border-top: 1px solid #edf1f6; padding: 13px 0; display: grid; grid-template-columns: 140px minmax(0, 1fr) 100px; gap: 12px; font-size: 12px; }
+.s4-evidence-source-row span { font-size: 10px; color: #9a723e; font-weight: 800; }
+.s4-evidence-source-row p { margin: 0; overflow-wrap: anywhere; color: #4e637d; line-height: 1.6; }
+.s4-evidence-source-row a { color: #193d6e; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+.s4-evidence-limitations li, .s4-evidence-limitations p { line-height: 1.65; font-size: 13px; color: #52657d; }
+@media (max-width: 1100px) { .s4-evidence-opportunities { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .s4-evidence-source-row { grid-template-columns: 1fr; gap: 4px; } .s4-action-day { grid-template-columns: 1fr; } }

@@ -7,6 +7,7 @@ import BusinessDashboard from './features/dashboard/BusinessDashboard';
 import BusinessOnboarding from './features/onboarding/BusinessOnboarding';
 import NeighborhoodExplorer from './features/neighborhood/NeighborhoodExplorer';
 import StorefrontInspection from './features/storefront/StorefrontInspection';
+import EvidenceReportPage from './features/evidence/EvidenceReportPage';
 import './styles/workspace.css';
 
 function ProtectedWorkspace() {
@@ -19,6 +20,11 @@ function ProtectedWorkspace() {
 function NeighborhoodRoute() {
   const { businessId } = useParams();
   return businessId ? <NeighborhoodExplorer businessId={businessId} /> : <Navigate to="/dashboard" />;
+}
+
+function EvidenceRoute() {
+  const { businessId } = useParams();
+  return businessId ? <EvidenceReportPage businessId={businessId} /> : <Navigate to="/dashboard" />;
 }
 
 function StorefrontRoute() {
@@ -38,6 +44,7 @@ export default function App() {
             <Route path="/businesses/:businessId/edit" element={<BusinessOnboarding />} />
             <Route path="/businesses/:businessId/neighborhood" element={<NeighborhoodRoute />} />
             <Route path="/businesses/:businessId/storefront" element={<StorefrontRoute />} />
+            <Route path="/businesses/:businessId/evidence" element={<EvidenceRoute />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
