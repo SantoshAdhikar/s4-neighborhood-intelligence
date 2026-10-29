@@ -32,7 +32,7 @@ public record BusinessProfileRequest(
         @NotBlank
         String services,
 
-        @NotBlank @Size(max = 1000)
+        @NotBlank @Size(max = 5000)
         String primaryGoal,
 
         @NotNull

@@ -12,7 +12,7 @@ import java.util.Set;
 
 /** Ranks OSM category matches; it cannot establish commercial competition or service equivalence. */
 public final class CompetitorSelectionService {
-    public static final int TARGET_COUNT = 10;
+    public static final int TARGET_COUNT = 50;
 
     private CompetitorSelectionService() {}
 
@@ -24,7 +24,7 @@ public final class CompetitorSelectionService {
         for (NearbyPlace place : nearby) {
             String name = normalize(place.getName());
             if (name.isEmpty() || name.equals(ownerName) || !distinct.add(name)) continue;
-            String matchLevel = matchLevel(business.getIndustry(), place);
+            String matchLevel = matchLevel(business, place);
             if (matchLevel != null) candidates.add(new Candidate(place, matchLevel));
         }
 
@@ -35,8 +35,8 @@ public final class CompetitorSelectionService {
         return candidates.stream().limit(TARGET_COUNT).toList();
     }
 
-    private static String matchLevel(String industry, NearbyPlace place) {
-        String kind = normalize(industry);
+    private static String matchLevel(BusinessProfile business, NearbyPlace place) {
+        String kind = normalize(business.getIndustry());
         String category = normalize(place.getCategory());
         String name = normalize(place.getName());
 
@@ -47,6 +47,24 @@ public final class CompetitorSelectionService {
                     containsAny(category, "hairdresser", "massage", "spa"))
                 return "RELATED_INDUSTRY";
             if (containsAny(category, "shop beauty", "shop cosmetics")) return "SAME_INDUSTRY";
+            return null;
+        }
+        if (kind.equals("retail")) {
+            // Retail is broad. Supermarkets and grocery shops are category matches,
+            // but a shop selling clothes cannot be assumed to compete with a grocery store.
+            String ownerBusiness = normalize(business.getName());
+            boolean ownerSellsGroceries = containsAny(ownerBusiness, "grocery", "market", "cash carry", "supermarket", "food")
+                    || containsAny(normalize(business.getServices()), "grocery", "groceries", "food", "rice", "vegetables", "spices", "wholesale");
+            if (ownerSellsGroceries) {
+                if (containsAny(category, "shop supermarket", "shop convenience", "shop wholesale", "shop grocery", "shop general"))
+                    return "SAME_INDUSTRY";
+                if (containsAny(category, "shop greengrocer", "shop spices", "shop beverages", "shop deli", "shop butcher", "shop bakery"))
+                    return "RELATED_INDUSTRY";
+                return null;
+            }
+            if (containsAny(category, "shop supermarket", "shop convenience", "shop wholesale", "shop general", "shop department store", "shop variety store",
+                    "shop greengrocer", "shop grocery", "shop clothes", "shop shoes", "shop hardware", "shop electronics", "shop books", "shop beauty", "shop cosmetics", "shop gift", "shop houseware"))
+                return "RELATED_INDUSTRY";
             return null;
         }
         if (kind.equals("restaurant food")) {

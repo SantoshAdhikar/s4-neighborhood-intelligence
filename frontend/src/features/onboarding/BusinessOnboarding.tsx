@@ -320,7 +320,7 @@ export default function BusinessOnboarding() {
                 name="primaryGoal"
                 value={form.primaryGoal}
                 onChange={handleChange}
-                maxLength={1000}
+                maxLength={5000}
                 rows={3}
                 placeholder="Attract more customers from nearby neighborhoods"
                 required

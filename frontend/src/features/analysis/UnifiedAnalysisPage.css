@@ -9,6 +9,8 @@
 .s4-unified-form label:not(.s4-unified-toggle){font-size:.9rem;font-weight:700;display:block;margin:21px 0 8px}
 .s4-unified-form input:not([type=checkbox]),.s4-unified-form select,.s4-unified-form textarea{display:block;width:100%;border:1px solid #cfd9e8;background:white;border-radius:10px;padding:11px 13px;font:inherit;color:#10264c;box-sizing:border-box}
 .s4-unified-form textarea{resize:vertical;line-height:1.6}
+.s4-unified-form #s4-unified-goal{resize:none;overflow-y:hidden;min-height:144px;max-height:none}
+.s4-unified-form .s4-unified-goal-count{text-align:right;margin-top:6px}
 .s4-unified-form small,.s4-unified-form .s4-unified-actions span{font-size:.78rem;color:#748198;display:block;margin-top:6px}
 .s4-unified-two{display:grid;grid-template-columns:1fr 1fr;gap:22px}
 .s4-unified-section-head{display:flex;justify-content:space-between;gap:16px;align-items:start;margin:0 0 12px}
@@ -54,3 +56,7 @@
 .s4-unified-shortfall{font-size:.83rem;padding:12px 14px;background:#fff8e8;border:1px solid #f2e2bf;border-radius:10px;color:#6b5325}
 .s4-unified-source-note{font-size:.8rem;color:#65748a;margin:11px 0}
 .s4-unified-links{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
+
+.s4-unified-expand{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:18px 0 8px;font-size:.82rem;color:#64748b}
+.s4-unified-expand button{border:1px solid #cbd7e7;border-radius:9px;padding:9px 14px;background:#fff;color:#172a52;font:inherit;font-weight:700;cursor:pointer}
+.s4-unified-expand button:hover{background:#f3f6fb}

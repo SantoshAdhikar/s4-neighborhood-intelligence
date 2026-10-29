@@ -37,7 +37,7 @@ public class BusinessProfile {
     @Column(nullable = false, columnDefinition = "text")
     private String services;
 
-    @Column(name = "primary_goal", nullable = false, length = 1000)
+    @Column(name = "primary_goal", nullable = false, length = 5000)
     private String primaryGoal;
 
     @Column(name = "owner_user_id")

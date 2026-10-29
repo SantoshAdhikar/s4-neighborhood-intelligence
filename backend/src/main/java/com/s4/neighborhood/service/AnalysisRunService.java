@@ -107,7 +107,7 @@ public class AnalysisRunService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Analysis run not found"));
     }
 
-    private void process(UUID id) {
+    void process(UUID id) {
         try {
             AnalysisRun run = runs.findById(id).orElseThrow();
             BusinessProfile business = businesses.findById(run.getBusinessId()).orElseThrow();
@@ -116,15 +116,18 @@ public class AnalysisRunService {
             if (run.getWebsite() != null && !run.getWebsite().isBlank()) business.setWebsite(run.getWebsite());
             business = businesses.saveAndFlush(business);
             boolean usedSavedNeighborhood = false;
+            boolean neighborhoodUnavailable = false;
             try {
                 neighborhood.research(run.getBusinessId());
             } catch (ResponseStatusException providerError) {
-                if (!isTemporaryNeighborhoodFailure(providerError)
-                        || !neighborhood.hasSavedSnapshot(run.getBusinessId())) {
-                    throw providerError;
-                }
-                usedSavedNeighborhood = true;
-                stage(id, "NEIGHBORHOOD", "Using saved neighborhood results; live provider unavailable");
+                // Neighborhood data is one evidence source, not a prerequisite for
+                // analyzing an owner's own website. Never substitute another address.
+                if (!isRecoverableNeighborhoodFailure(providerError)) throw providerError;
+                usedSavedNeighborhood = neighborhood.hasSavedSnapshot(run.getBusinessId());
+                neighborhoodUnavailable = !usedSavedNeighborhood;
+                stage(id, "NEIGHBORHOOD", usedSavedNeighborhood
+                        ? "Using saved neighborhood evidence; live provider unavailable"
+                        : "No neighborhood evidence available; continuing with the business website");
             }
             stage(id, "WEBSITES", "Reviewing publicly accessible business homepages");
             websiteResearch.research(run, business);
@@ -172,6 +175,9 @@ public class AnalysisRunService {
             if (usedSavedNeighborhood) {
                 resultDetail += " Earlier neighborhood results were reused because the live provider was unavailable.";
             }
+            if (neighborhoodUnavailable) {
+                resultDetail += " Neighborhood discovery was unavailable; this report does not establish local competitors.";
+            }
             run.setDetail(resultDetail);
             run.setCompletedAt(Instant.now());
             runs.saveAndFlush(run);
@@ -181,9 +187,9 @@ public class AnalysisRunService {
         }
     }
 
-    private static boolean isTemporaryNeighborhoodFailure(ResponseStatusException error) {
+    private static boolean isRecoverableNeighborhoodFailure(ResponseStatusException error) {
         int status = error.getStatusCode().value();
-        return status == 429 || status == 502 || status == 503 || status == 504;
+        return status == 422 || status == 429 || status == 502 || status == 503 || status == 504;
     }
 
     private void stage(UUID id, String step, String detail) {

@@ -25,6 +25,7 @@ import java.util.Locale;
 @Service
 public class WebsiteResearchService {
     private static final int MAX_HTML_BYTES = 1_048_576;
+    private static final int MAX_COMPETITOR_HOMEPAGES = 12;
     private static final String USER_AGENT = "S4NeighborhoodIntelligence/0.1 (+https://github.com/SantoshAdhikar/s4-neighborhood-intelligence)";
     private final WebsiteFindingRepository findings;
     private final NeighborhoodResearchRepository researches;
@@ -41,18 +42,21 @@ public class WebsiteResearchService {
         this.places = places;
     }
 
-    // At most ten matching OSM records, with at most one respectful homepage check per host.
+    // Keep all candidate listings; limit external homepage requests per analysis.
     public void research(AnalysisRun run, BusinessProfile business) {
         if (business.getWebsite() != null && !business.getWebsite().isBlank()) {
             inspect(run, "OWNER_WEBSITE", business.getName(), business.getWebsite());
         }
-        var latest = researches.findTopByBusinessIdOrderByFetchedAtDesc(business.getId());
+        var latest = researches.findTopByBusinessIdAndAddressKeyAndRadiusMilesOrderByFetchedAtDesc(
+                business.getId(), NeighborhoodResearchService.addressKey(business),
+                business.getResearchRadiusMiles());
         if (latest.isEmpty()) return;
         java.util.Set<String> seenHosts = new java.util.HashSet<>();
         if (business.getWebsite() != null) seenHosts.add(hostname(business.getWebsite()));
 
         var matches = CompetitorSelectionService.select(business,
                 places.findByResearchIdOrderByDistanceMilesAsc(latest.get().getId()));
+        int inspectedHomepages = 0;
         for (var match : matches) {
             NearbyPlace place = match.place();
             String site = place.getWebsite();
@@ -75,7 +79,11 @@ public class WebsiteResearchService {
                 if (host.isBlank() || !seenHosts.add(host)) {
                     finding.setStatus("SKIPPED");
                     finding.setNote("Homepage not fetched: invalid or already inspected website host.");
+                } else if (inspectedHomepages >= MAX_COMPETITOR_HOMEPAGES) {
+                    finding.setStatus("SKIPPED");
+                    finding.setNote("Candidate listed from OSM. Homepage inspection deferred to keep public-site requests bounded.");
                 } else {
+                    inspectedHomepages++;
                     finding.setUrl(limit(site, 500));
                     inspectHomepage(finding, site);
                 }

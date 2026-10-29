@@ -56,7 +56,7 @@ public class EvidenceSourceService {
         List<String> limitations = new ArrayList<>();
         String localProfile = "/businesses/" + business.getId() + "/edit";
         sources.add(new Source("profile-goal", "OWNER_PROFILE",
-                "Owner-stated goal: " + limited(business.getPrimaryGoal(), 400), localProfile, business.getUpdatedAt()));
+                "Owner-stated goal: " + limited(business.getPrimaryGoal(), 5000), localProfile, business.getUpdatedAt()));
         sources.add(new Source("profile-services", "OWNER_PROFILE",
                 "Owner-reported services: " + limited(business.getServices(), 400), localProfile, business.getUpdatedAt()));
         sources.add(new Source("profile-location", "OWNER_PROFILE",
@@ -110,46 +110,50 @@ public class EvidenceSourceService {
             limitations.add("No analyzed storefront image is available. Avoid all claims about physical storefront appearance.");
         }
 
-        NeighborhoodResearch research = researches.findTopByBusinessIdOrderByFetchedAtDesc(business.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Run Neighborhood Explorer before generating a report"));
-        String currentKey = String.join("|", business.getStreetAddress(), business.getCity(), business.getState(),
-                business.getPostalCode(), business.getIndustry()).strip().toLowerCase(Locale.ROOT);
-        if (!currentKey.equals(research.getAddressKey()) || business.getResearchRadiusMiles() != research.getRadiusMiles()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "The business location or research radius changed. Rerun Neighborhood Explorer first");
-        }
-        List<NearbyPlace> nearby = places.findByResearchIdOrderByDistanceMilesAsc(research.getId());
-        if (nearby.isEmpty()) limitations.add("No nearby businesses were found in the saved OpenStreetMap research.");
+        var savedNeighborhood = researches.findTopByBusinessIdAndAddressKeyAndRadiusMilesOrderByFetchedAtDesc(
+                business.getId(), NeighborhoodResearchService.addressKey(business),
+                business.getResearchRadiusMiles());
         var latestRun = analysisRuns.findTopByBusinessIdOrderByCreatedAtDesc(business.getId());
         Set<String> shortlisted = new HashSet<>();
         latestRun.ifPresent(run -> websiteFindings.findByRunIdOrderByFetchedAtAsc(run.getId()).stream()
                 .map(item -> item.getOsmSourceUrl())
                 .filter(url -> url != null && !url.isBlank())
                 .forEach(shortlisted::add));
-        // Include every shortlisted candidate first; then nearby context up to 20 total.
-        List<NearbyPlace> ranked = new ArrayList<>();
-        nearby.stream().filter(place -> shortlisted.contains(place.getSourceUrl())).forEach(ranked::add);
-        nearby.stream().filter(place -> !shortlisted.contains(place.getSourceUrl())).forEach(ranked::add);
-        for (NearbyPlace place : ranked.stream().limit(14).toList()) {
-            sources.add(new Source("osm-" + place.getOsmType() + "-" + place.getOsmId(), "OSM_PLACE",
-                    "OSM listing: " + limited(place.getName(), 150) + "; category "
-                            + limited(place.getCategory(), 80) + "; approximately "
-                            + place.getDistanceMiles() + " miles from the researched location. "
-                            + (shortlisted.contains(place.getSourceUrl())
-                            ? "Selected for category-based competitor review. Specific service overlap is not independently verified. "
-                            : "Nearby context only. ")
-                            + (place.getWebsite() == null ? "No website recorded in this listing."
-                            : "Listing contains a website URL."),
-                    place.getSourceUrl(), research.getFetchedAt()));
-        }
-        if (shortlisted.isEmpty()) {
-            limitations.add("No same-industry businesses were selected from the saved OpenStreetMap snapshot; verify its category coverage or research radius.");
-        } else {
-            limitations.add("Competitors were shortlisted using business categories and names. Same-category listings do not prove identical services or commercial competition.");
-            if (shortlisted.size() < CompetitorSelectionService.TARGET_COUNT) {
-                limitations.add("Only " + shortlisted.size() + " potentially relevant businesses were identified in the saved search radius, fewer than the target of 10.");
+        if (savedNeighborhood.isPresent()) {
+            NeighborhoodResearch research = savedNeighborhood.get();
+            List<NearbyPlace> nearby = places.findByResearchIdOrderByDistanceMilesAsc(research.getId());
+            if (nearby.isEmpty()) {
+                limitations.add("No nearby businesses were found in the saved OpenStreetMap research. Competitor coverage is unavailable, not evidence that none exist.");
             }
+            List<NearbyPlace> ranked = new ArrayList<>();
+            nearby.stream().filter(place -> shortlisted.contains(place.getSourceUrl())).forEach(ranked::add);
+            nearby.stream().filter(place -> !shortlisted.contains(place.getSourceUrl())).forEach(ranked::add);
+            for (NearbyPlace place : ranked.stream().limit(24).toList()) {
+                sources.add(new Source("osm-" + place.getOsmType() + "-" + place.getOsmId(), "OSM_PLACE",
+                        "OSM listing: " + limited(place.getName(), 150) + "; category "
+                                + limited(place.getCategory(), 80) + "; approximately "
+                                + place.getDistanceMiles() + " miles from the researched location. "
+                                + (shortlisted.contains(place.getSourceUrl())
+                                ? "Selected for category-based competitor review. Specific service overlap is not independently verified. "
+                                : "Nearby context only. ")
+                                + (place.getWebsite() == null ? "No website recorded in this listing."
+                                : "Listing contains a website URL."),
+                        place.getSourceUrl(), research.getFetchedAt()));
+            }
+            if (shortlisted.isEmpty()) {
+                limitations.add("No same-industry businesses were selected from the saved OpenStreetMap snapshot; verify its category coverage or research radius.");
+            } else {
+                limitations.add("Competitors were shortlisted using business categories and names. Same-category listings do not prove identical services or commercial competition.");
+                if (shortlisted.size() < CompetitorSelectionService.TARGET_COUNT) {
+                    limitations.add("Only " + shortlisted.size() + " potentially relevant businesses were identified in the saved search radius, fewer than the target of " + CompetitorSelectionService.TARGET_COUNT + ".");
+                }
+                if (shortlisted.size() > 24) {
+                    limitations.add("The comparison page lists " + shortlisted.size()
+                            + " OSM candidates; only the first 24 listings are included as individual AI evidence sources to keep the report bounded.");
+                }
+            }
+        } else {
+            limitations.add("No neighborhood snapshot is available for this business address and search radius. Nearby competitor claims cannot be verified; the report uses only other available evidence.");
         }
         analysisRuns.findTopByBusinessIdOrderByCreatedAtDesc(business.getId()).ifPresent(run -> {
             if (run.getCustomerFeedback() != null && !run.getCustomerFeedback().isBlank()) {
@@ -159,6 +163,8 @@ public class EvidenceSourceService {
                         "/businesses/" + business.getId() + "/analyze", null));
                 limitations.add("Customer feedback was provided by the owner, not verified against a review platform; it may not represent all customers.");
             }
+            int websitesNotListed = 0;
+            int websitesNotInspected = 0;
             for (var website : websiteFindings.findByRunIdOrderByFetchedAtAsc(run.getId())) {
                 if ("FETCHED".equals(website.getStatus())) {
                     sources.add(new Source("website-" + stableId(website.getUrl()), website.getKind(),
@@ -167,12 +173,16 @@ public class EvidenceSourceService {
                                     + "; extracted labels: " + limited(website.getObservedSummary(), 650),
                             website.getUrl(), website.getFetchedAt().truncatedTo(java.time.temporal.ChronoUnit.DAYS)));
                 } else if ("NO_WEBSITE".equals(website.getStatus())) {
-                    limitations.add("OSM has no website on record for " + limited(website.getBusinessName(), 100)
-                            + "; no claim is made about the actual existence of a website.");
+                    websitesNotListed++;
                 } else {
-                    limitations.add("Website research for " + limited(website.getBusinessName(), 100)
-                            + " was unavailable, skipped or disallowed. No conclusions were drawn from that page.");
+                    websitesNotInspected++;
                 }
+            }
+            if (websitesNotListed > 0) {
+                limitations.add(websitesNotListed + " shortlisted businesses have no website recorded in OSM; this does not prove they lack websites.");
+            }
+            if (websitesNotInspected > 0) {
+                limitations.add(websitesNotInspected + " website homepages were unavailable, disallowed or deferred; no business-quality conclusion follows from missing website evidence.");
             }
         });
         limitations.add("A homepage inspection is not a full website audit; missing labels or links do not prove a service or feature is absent.");

@@ -11,16 +11,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class CompetitorSelectionServiceTest {
     @Test
-    void selectsTenMatchingBusinessesRatherThanNearestUnrelatedStores() {
+    void selectsFiftyMatchingBusinessesRatherThanNearestUnrelatedStores() {
         var business = business("Beauty & Personal Care");
         var places = new ArrayList<NearbyPlace>();
         places.add(place("Convenience Grocery", "shop: convenience", 0.02));
         places.add(place("Hair Salon", "shop: hairdresser", 0.01));
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < 65; i++) {
             places.add(place("Brow and Lash Studio " + i, "shop: beauty", 0.2 + i * 0.01));
         }
         var matches = CompetitorSelectionService.select(business, places);
-        assertEquals(10, matches.size());
+        assertEquals(50, matches.size());
         assertTrue(matches.stream().allMatch(item -> item.matchLevel().equals("SAME_INDUSTRY")));
         assertTrue(matches.stream().noneMatch(item -> item.place().getName().contains("Grocery")));
         assertTrue(matches.stream().noneMatch(item -> item.place().getName().equals("Hair Salon")));
@@ -48,6 +48,34 @@ class CompetitorSelectionServiceTest {
                 place("Pharmacy", "amenity: pharmacy", 0.1),
                 place("Coffee Bar", "amenity: cafe", 1.4)));
         assertEquals(2, matches.size());
+    }
+
+    @Test
+    void groceryRetailMatchesRelevantShopsButExcludesUnrelatedRetail() {
+        var business = business("Retail");
+        business.setName("Local Cash & Carry");
+        business.setServices("Groceries and spices");
+        var matches = CompetitorSelectionService.select(business, List.of(
+                place("Market A", "shop: supermarket", 0.8),
+                place("Convenience B", "shop: convenience", 1.0),
+                place("Spice Store C", "shop: spices", 0.1),
+                place("Fashion Shop D", "shop: clothes", 0.2)));
+        assertEquals(3, matches.size());
+        assertEquals("SAME_INDUSTRY", matches.get(0).matchLevel());
+        assertEquals("SAME_INDUSTRY", matches.get(1).matchLevel());
+        assertEquals("RELATED_INDUSTRY", matches.get(2).matchLevel());
+        assertTrue(matches.stream().noneMatch(candidate -> candidate.place().getName().contains("Fashion")));
+    }
+
+    @Test
+    void genericRetailDoesNotClaimAllNearbyStoresAreDirectCompetitors() {
+        var business = business("Retail");
+        business.setName("Neighborhood Shop");
+        var matches = CompetitorSelectionService.select(business, List.of(
+                place("General Store", "shop: general", 0.5),
+                place("Dentist", "amenity: dentist", 0.2)));
+        assertEquals(1, matches.size());
+        assertEquals("RELATED_INDUSTRY", matches.getFirst().matchLevel());
     }
 
     private static BusinessProfile business(String industry) {

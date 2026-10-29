@@ -17,7 +17,7 @@ public class AnalysisRun {
     private String step = "QUEUED";
     @Column(length = 500)
     private String detail;
-    @Column(nullable = false, length = 1000)
+    @Column(nullable = false, length = 5000)
     private String goal;
     @Column(length = 500)
     private String website;

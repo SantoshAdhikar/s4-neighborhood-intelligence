@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowRight, BookOpen, CheckCircle2, CircleAlert, Clock3, Coins, FileImage, Globe, LoaderCircle, MapPinned, Radar, Sparkles } from 'lucide-react';
 import { getBusiness } from '../../services/businessApi';
@@ -75,6 +75,7 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
   const [media, setMedia] = useState<StorefrontMedia[]>([]);
   const [goal, setGoal] = useState('');
+  const goalFieldRef = useRef<HTMLTextAreaElement>(null);
   const [website, setWebsite] = useState('');
   const [customerFeedback, setCustomerFeedback] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
@@ -86,6 +87,26 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showAllCompetitors, setShowAllCompetitors] = useState(false);
+
+  useLayoutEffect(() => {
+    const field = goalFieldRef.current;
+    if (!field) return;
+    field.style.height = 'auto';
+    field.style.height = `${field.scrollHeight}px`;
+  }, [goal, loading]);
+
+  useEffect(() => {
+    if (loading) return;
+    const field = goalFieldRef.current;
+    if (!field || !field.parentElement) return;
+    const observer = new ResizeObserver(() => {
+      field.style.height = 'auto';
+      field.style.height = `${field.scrollHeight}px`;
+    });
+    observer.observe(field.parentElement);
+    return () => observer.disconnect();
+  }, [loading]);
 
   useEffect(() => {
     let active = true;
@@ -126,7 +147,7 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting || run?.status === 'QUEUED' || run?.status === 'RUNNING') return;
-    setSubmitting(true);setError('');
+    setSubmitting(true);setError('');setShowAllCompetitors(false);
     try {
       let selectedId = mediaId || null;
       if (photo) {
@@ -151,6 +172,10 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
   const legacyResearch = run?.websites.some(site => site.kind === 'NEARBY_WEBSITE') && competitors.length === 0;
   const sameIndustryCount = competitors.filter(site => site.matchLevel === 'SAME_INDUSTRY').length;
   const fetchedCount = competitors.filter(site => site.status === 'FETCHED').length;
+  const visibleWebsites = [
+    ...(run?.websites.filter(site => site.kind !== 'NEARBY_COMPETITOR') ?? []),
+    ...(showAllCompetitors ? competitors : competitors.slice(0, 12)),
+  ];
   const freshReport = run?.status === 'COMPLETED' && Boolean(run.reportId && report?.id === run.reportId);
 
   return <main className="s4-unified-page">
@@ -162,14 +187,15 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
     {loading ? <p>Loading business profile…</p> : <form className="s4-unified-form" onSubmit={(event) => void submit(event)}>
       <div className="s4-unified-section-head"><div><p className="s4-kicker">NEW ANALYSIS</p><h2>{business?.name}</h2><p>All requirements in one place. No more switching between steps.</p></div></div>
       <label htmlFor="s4-unified-goal">What is your main business goal?</label>
-      <textarea id="s4-unified-goal" rows={3} maxLength={1000} required value={goal} onChange={event => setGoal(event.target.value)} placeholder="For example, improve appointments for our lash lift service" />
+      <textarea ref={goalFieldRef} id="s4-unified-goal" rows={5} maxLength={5000} required value={goal} onChange={event => setGoal(event.target.value)} placeholder="For example, improve appointments for our lash lift service" />
+        <small className="s4-unified-goal-count">{goal.length.toLocaleString()} / 5,000 characters</small>
       <div className="s4-unified-two">
         <div><label htmlFor="s4-unified-website">Your business website (optional)</label>
           <input id="s4-unified-website" type="url" placeholder="https://example.com" value={website} onChange={event => setWebsite(event.target.value)} />
           <small>Free homepage research; sites may block automated access.</small></div>
         <div><label htmlFor="s4-unified-media">New storefront photo (optional)</label>
           <input id="s4-unified-media" type="file" accept="image/png,image/jpeg,video/mp4" onChange={event => setPhoto(event.target.files?.[0] ?? null)} />
-          <small>Uploaded privately to your local backend first.</small></div>
+          <small>Saved with this submission. Enable Meta below to inspect the photo automatically; otherwise it is stored without visual analysis.</small></div>
       </div>
       <label htmlFor="s4-unified-saved">Or reuse an existing storefront image</label>
       <select id="s4-unified-saved" value={mediaId} onChange={event => setMediaId(event.target.value)} disabled={Boolean(photo)}>
@@ -180,29 +206,35 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
       <textarea id="s4-unified-feedback" rows={3} maxLength={1500} value={customerFeedback} onChange={event => setCustomerFeedback(event.target.value)} placeholder="Summarize customer requests or feedback without names or personal information" />
       <small>We won't scrape Google reviews. Owner-provided feedback is labeled unverified, not a representative review sample.</small>
       <div className="s4-unified-cost">
-        <div><strong>Free-only research and local AI</strong><p>Up to 10 nearby same-industry or clearly labeled related businesses, based on available OSM listings; not a guarantee of 10 functioning websites. Neighborhood data, accessible website summaries, and a local Ollama action report when qwen2.5:7b is running. No Meta requests. A newly uploaded photo is saved locally but not visually analyzed in free-only mode; saved Muse findings can still be reused.</p></div>
-        <label className="s4-unified-toggle"><input type="checkbox" checked={useMeta} onChange={event => setUseMeta(event.target.checked)} /><span><Coins size={17}/> Include Meta AI analysis (uses promotional credits)</span></label>
+        <div><strong>Free-only research and local AI</strong><p>Up to 50 nearby same-industry or clearly labeled related business candidates from OSM, with up to 12 competitor homepages checked per run. Candidate listings are not proof of direct competition, and website access may be unavailable. Neighborhood data, accessible website summaries, and a local Ollama action report when qwen2.5:7b is running. No Meta requests. A newly uploaded photo is saved locally but not visually analyzed in free-only mode; saved Muse findings can still be reused.</p></div>
+        <label className="s4-unified-toggle"><input type="checkbox" checked={useMeta} onChange={event => setUseMeta(event.target.checked)} /><span><Coins size={17}/> Automatically inspect the selected photo and generate the report with Meta (uses promotional credits)</span></label>
         {useMeta && <label className="s4-unified-toggle"><input type="checkbox" checked={segmentSign} onChange={event => setSegmentSign(event.target.checked)}/><span>Also run SAM 3.1 sign segmentation if needed (additional credit usage)</span></label>}
       </div>
       <div className="s4-unified-actions"><button type="submit" disabled={running || !goal.trim()} className="s4-unified-submit">{submitting ? <LoaderCircle className="s4-spin" size={18}/> : <Sparkles size={18}/>} {submitting ? 'Saving your request…' : running ? 'Analysis running…' : 'Start complete analysis'} <ArrowRight size={18}/></button>
-      <span>{useMeta ? 'Meta requests are opt-in; cached results may be reused.' : 'Free-only mode is selected. No Meta billing; local Ollama must be running.'}</span></div>
+      <span>{useMeta ? 'One click runs neighborhood research, website checks, optional photo inspection, and the Meta report. API credits may be used.' : 'One click runs neighborhood research, website checks and a local Ollama report. Saved photos are not visually analyzed in local mode.'}</span></div>
     </form>}
     {error && <p role="alert" className="s4-form-error"><CircleAlert size={16}/> {error}</p>}
     {run && <Progress run={run}/>}
     {run && run.websites.length > 0 && <section className="s4-unified-websites">
       <div className="s4-unified-section-head"><div><p className="s4-kicker">FREE COMPETITOR & WEBSITE RESEARCH</p>
         <h2>Nearby industry comparison</h2>
-        <p>Target: 10 category-matched businesses within your saved search radius. No invented listings, ratings, reviews or sales estimates.</p></div></div>
+        <p>Target: up to 50 category-matched businesses within your saved search radius; at most 12 competitor homepages checked. No invented listings, ratings, reviews or sales estimates.</p></div></div>
       <div className="s4-unified-coverage" role="status">
-        <span><strong>{competitors.length}/10</strong> candidates found</span>
+        <span><strong>{competitors.length}/50</strong> candidates found</span>
         <span><strong>{sameIndustryCount}</strong> same-industry matches</span>
         <span><strong>{competitors.length - sameIndustryCount}</strong> related-sector matches</span>
         <span><strong>{fetchedCount}</strong> competitor homepages inspected</span>
       </div>
-      {legacyResearch && <p className="s4-unified-shortfall">This is an older analysis that inspected up to 3 nearby websites. Start a new analysis to build the 10-business shortlist.</p>}
-      {!legacyResearch && competitors.length < 10 && <p className="s4-unified-shortfall">The saved OSM search has fewer than 10 matching businesses. S4 won't fill the list with unrelated shops. You can expand the research radius in Business Settings and run a new analysis.</p>}
+      {legacyResearch && <p className="s4-unified-shortfall">This is an older analysis that inspected up to 3 nearby websites. Start a new analysis to build the 50-business shortlist.</p>}
+      {!legacyResearch && competitors.length < 50 && <p className="s4-unified-shortfall">{run?.detail.includes('Neighborhood discovery was unavailable') ? 'Live neighborhood discovery was unavailable. This report cannot establish nearby competitors, but website and available evidence analysis can still complete.' : 'The latest OSM search identified fewer than 50 category-matched businesses. S4 will not invent listings or label unrelated shops as direct competitors. You can expand the radius in Business Settings if needed.'}</p>}
       <p className="s4-unified-source-note">Matches use OSM categories and business names; exact service overlap is not independently verified. A missing website does not imply the business has no website.</p>
-      <div className="s4-unified-web-grid">{run.websites.map((site,index) => <article key={`${site.url}-${index}-${site.businessName}`}>
+      {competitors.length > 12 && <div className="s4-unified-expand">
+        <span>Showing {showAllCompetitors ? competitors.length : 12} of {competitors.length} nearby candidates (plus your website).</span>
+        <button type="button" onClick={() => setShowAllCompetitors(current => !current)} aria-expanded={showAllCompetitors}>
+          {showAllCompetitors ? 'Show first 12' : `Show all ${competitors.length} candidates`}
+        </button>
+      </div>}
+      <div className="s4-unified-web-grid">{visibleWebsites.map((site,index) => <article key={`${site.url}-${index}-${site.businessName}`}>
         <span>{site.kind === 'OWNER_WEBSITE' ? 'YOUR WEBSITE' : site.matchLevel === 'RELATED_INDUSTRY' ? 'RELATED SECTOR · NOT VERIFIED DIRECT COMPETITOR' : 'SAME INDUSTRY CANDIDATE'}</span>
         <h3>{site.businessName}</h3>
         {site.distanceMiles != null && <small>{site.distanceMiles.toFixed(2)} miles · {site.category ?? 'OSM category unavailable'}</small>}

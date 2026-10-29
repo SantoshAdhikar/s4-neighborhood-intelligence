@@ -18,7 +18,7 @@ import java.util.*;
 @Service
 public class NeighborhoodResearchService {
     private static final Duration CACHE_AGE = Duration.ofHours(24);
-    private static final int MAX_DISPLAYED = 160;
+    private static final int MAX_DISPLAYED = 400;
 
     private final BusinessProfileRepository businesses;
     private final NeighborhoodResearchRepository researches;
@@ -45,10 +45,13 @@ public class NeighborhoodResearchService {
                 businessId, addressKey(business), business.getResearchRadiusMiles()).isPresent();
     }
 
-    private static String addressKey(BusinessProfile business) {
+    static String addressKey(BusinessProfile business) {
         return String.join("|", business.getStreetAddress(), business.getCity(),
                         business.getState(), business.getPostalCode(), business.getIndustry())
-                .strip().toLowerCase(Locale.ROOT);
+                .strip().toLowerCase(Locale.ROOT)
+                // The V9 retail search used the generic shop filter. Rebuild old
+                // retail snapshots once so the new grocery/retail taxonomy applies.
+                + ("Retail".equalsIgnoreCase(business.getIndustry()) ? "|retail-taxonomy-v2" : "");
     }
 
     public NeighborhoodResponse research(UUID businessId) {

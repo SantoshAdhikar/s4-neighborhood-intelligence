@@ -161,6 +161,10 @@ public class OpenStreetMapClient {
                             + "nwr" + point
                             + "[\"shop\"=\"bakery\"];";
 
+            case "retail" ->
+                    "nwr" + point
+                            + "[\"shop\"~\"^(supermarket|convenience|wholesale|general|department_store|variety_store|greengrocer|grocery|spices|beverages|deli|butcher|bakery|clothes|shoes|hardware|electronics|books|beauty|cosmetics|gift|houseware|mall)$\"];";
+
             case "health & wellness" ->
                     "nwr" + point
                             + "[\"amenity\"~\"^(clinic|doctors|dentist|pharmacy)$\"];"
