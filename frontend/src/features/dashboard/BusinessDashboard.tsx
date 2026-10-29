@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowRight, Building2, MapPinned, Plus, ScanEye, ClipboardList } from 'lucide-react';
+import { Sparkles, ArrowRight, Building2, MapPinned, Plus, ScanEye, ClipboardList } from 'lucide-react';
 import { listBusinesses } from '../../services/businessApi';
 import { useAuth } from '../../app/useAuth';
 import type { BusinessProfile } from '../../types/business';
@@ -40,6 +40,7 @@ export default function BusinessDashboard() {
             <h2>{business.name}</h2>
             <p>{business.city}, {business.state} · {business.researchRadiusMiles}-mile radius</p>
             <div className="s4-card-actions">
+              <Link className="s4-primary-analysis-link" to={`/businesses/${business.id}/analyze`}><Sparkles size={17} /> Start complete analysis <ArrowRight size={15} /></Link>
               <Link to={`/businesses/${business.id}/neighborhood`}><MapPinned size={17} /> Neighborhood <ArrowRight size={15} /></Link>
               <Link to={`/businesses/${business.id}/storefront`}><ScanEye size={17} /> Visual inspection <ArrowRight size={15} /></Link>
               <Link to={`/businesses/${business.id}/evidence`}><ClipboardList size={17} /> Growth report <ArrowRight size={15} /></Link>

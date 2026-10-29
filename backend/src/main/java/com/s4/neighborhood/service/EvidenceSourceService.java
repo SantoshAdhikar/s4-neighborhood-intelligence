@@ -10,6 +10,8 @@ import com.s4.neighborhood.repository.NearbyPlaceRepository;
 import com.s4.neighborhood.repository.NeighborhoodResearchRepository;
 import com.s4.neighborhood.repository.StorefrontMediaRepository;
 import com.s4.neighborhood.repository.StorefrontSegmentationRepository;
+import com.s4.neighborhood.repository.AnalysisRunRepository;
+import com.s4.neighborhood.repository.WebsiteFindingRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -27,18 +29,27 @@ public class EvidenceSourceService {
     private final StorefrontMediaRepository media;
     private final StorefrontSegmentationRepository segmentations;
     private final JsonMapper json;
+    private final AnalysisRunRepository analysisRuns;
+    private final WebsiteFindingRepository websiteFindings;
 
     public EvidenceSourceService(NeighborhoodResearchRepository researches, NearbyPlaceRepository places,
                                  StorefrontMediaRepository media, StorefrontSegmentationRepository segmentations,
+                                 AnalysisRunRepository analysisRuns, WebsiteFindingRepository websiteFindings,
                                  JsonMapper json) {
         this.researches = researches;
         this.places = places;
         this.media = media;
         this.segmentations = segmentations;
         this.json = json;
+        this.analysisRuns = analysisRuns;
+        this.websiteFindings = websiteFindings;
     }
 
     public EvidenceBundle collect(BusinessProfile business) {
+        return collect(business, true);
+    }
+
+    public EvidenceBundle collect(BusinessProfile business, boolean requireVisual) {
         List<Source> sources = new ArrayList<>();
         List<String> limitations = new ArrayList<>();
         String localProfile = "/businesses/" + business.getId() + "/edit";
@@ -90,8 +101,11 @@ public class EvidenceSourceService {
                             "/businesses/" + business.getId() + "/storefront", result.getCompletedAt())));
         }
         if (sources.stream().noneMatch(source -> "STORE_FRONT_IMAGE".equals(source.kind()))) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Analyze a storefront image with Muse Spark before generating a report");
+            if (requireVisual) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Analyze a storefront image with Muse Spark before generating a report");
+            }
+            limitations.add("No analyzed storefront image is available. Avoid all claims about physical storefront appearance.");
         }
 
         NeighborhoodResearch research = researches.findTopByBusinessIdOrderByFetchedAtDesc(business.getId())
@@ -114,10 +128,42 @@ public class EvidenceSourceService {
                             : "Listing contains a website URL."),
                     place.getSourceUrl(), research.getFetchedAt()));
         }
+        analysisRuns.findTopByBusinessIdOrderByCreatedAtDesc(business.getId()).ifPresent(run -> {
+            if (run.getCustomerFeedback() != null && !run.getCustomerFeedback().isBlank()) {
+                sources.add(new Source("feedback-" + stableId(run.getCustomerFeedback()), "OWNER_FEEDBACK",
+                        "Owner-supplied customer feedback notes (not independently verified): "
+                                + limited(run.getCustomerFeedback(), 1000),
+                        "/businesses/" + business.getId() + "/analyze", null));
+                limitations.add("Customer feedback was provided by the owner, not verified against a review platform; it may not represent all customers.");
+            }
+            for (var website : websiteFindings.findByRunIdOrderByFetchedAtAsc(run.getId())) {
+                if ("FETCHED".equals(website.getStatus())) {
+                    sources.add(new Source("website-" + stableId(website.getUrl()), website.getKind(),
+                            "Public homepage metadata for " + limited(website.getBusinessName(), 90)
+                                    + "; title: " + limited(website.getTitle(), 150)
+                                    + "; extracted labels: " + limited(website.getObservedSummary(), 950),
+                            website.getUrl(), website.getFetchedAt().truncatedTo(java.time.temporal.ChronoUnit.DAYS)));
+                } else {
+                    limitations.add("Website research for " + limited(website.getBusinessName(), 100)
+                            + " was unavailable or disallowed. No conclusions were drawn from that page.");
+                }
+            }
+        });
+        limitations.add("A homepage inspection is not a full website audit; missing labels or links do not prove a service or feature is absent.");
         limitations.add("OpenStreetMap listings do not establish a competitor's sales, prices, quality, customer traffic, or marketing performance.");
         limitations.add("Business goals and services are owner-provided, not externally verified.");
         limitations.add("SAM masks identify candidate regions; they do not independently verify the meaning of a sign.");
         return new EvidenceBundle(List.copyOf(sources), List.copyOf(limitations));
+    }
+
+    private static String stableId(String text) {
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest).substring(0, 20);
+        } catch (java.security.NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 unavailable", exception);
+        }
     }
 
     private static String limited(String value, int max) {

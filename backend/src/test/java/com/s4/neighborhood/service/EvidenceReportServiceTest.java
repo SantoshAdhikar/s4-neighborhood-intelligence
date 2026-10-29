@@ -33,6 +33,15 @@ class EvidenceReportServiceTest {
                 () -> EvidenceReportService.validateDraft(incomplete, List.of(VERIFIED)));
     }
 
+    @Test
+    void rejectsIncompleteLocalReportWithoutMislabelingItMeta() {
+        Draft original = draft("visual-1");
+        Draft incomplete = new Draft(original.opportunities(), original.plan().subList(0, 6), List.of());
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> EvidenceReportService.validateDraft(incomplete, List.of(VERIFIED)));
+        assertTrue(exception.getMessage().startsWith("AI report"));
+    }
+
     private static Draft draft(String evidenceId) {
         List<Opportunity> opportunities = java.util.stream.IntStream.rangeClosed(1, 3)
                 .mapToObj(rank -> new Opportunity(rank, "Test improvement", "Rationale",

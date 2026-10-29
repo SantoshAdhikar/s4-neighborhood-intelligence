@@ -14,3 +14,7 @@ export async function latestEvidenceReport(businessId: string): Promise<Evidence
 export async function generateEvidenceReport(businessId: string): Promise<EvidenceReport> {
   return readJson<EvidenceReport>(await apiFetch(url(businessId), { method: 'POST' }));
 }
+
+export async function readEvidenceReport(businessId: string, reportId: string): Promise<EvidenceReport> {
+  return readJson<EvidenceReport>(await apiFetch(`${url(businessId)}/${encodeURIComponent(reportId)}`));
+}

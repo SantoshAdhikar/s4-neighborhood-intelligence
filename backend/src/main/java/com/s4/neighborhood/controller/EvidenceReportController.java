@@ -26,6 +26,12 @@ public class EvidenceReportController {
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
+    @GetMapping("/{reportId}")
+    public EvidenceReportResponse read(@PathVariable UUID businessId, @PathVariable UUID reportId) {
+        access.requireOwner(businessId);
+        return reports.get(businessId, reportId);
+    }
+
     @PostMapping
     public EvidenceReportResponse generate(@PathVariable UUID businessId) {
         access.requireOwner(businessId);

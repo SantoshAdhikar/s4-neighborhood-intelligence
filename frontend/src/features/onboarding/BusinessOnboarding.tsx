@@ -409,6 +409,7 @@ export default function BusinessOnboarding() {
 
             {saved && (
               <div className="s4-flow-links">
+                <Link to={`/businesses/${saved.id}/analyze`}>Start complete analysis →</Link>
                 <Link to={`/businesses/${saved.id}/neighborhood`}>Explore neighborhood →</Link>
                 <Link to={`/businesses/${saved.id}/storefront`}>Inspect storefront →</Link>
                 <Link to="/dashboard">Dashboard →</Link>

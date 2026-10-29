@@ -37,19 +37,26 @@ public class NeighborhoodResearchService {
         this.osm = osm;
     }
 
+    /** Accept only saved neighborhood research for this business, address and radius. */
+    public boolean hasSavedSnapshot(UUID businessId) {
+        BusinessProfile business = businesses.findById(businessId)
+                .orElseThrow(() -> new NoSuchElementException("Business not found: " + businessId));
+        return researches.findTopByBusinessIdAndAddressKeyAndRadiusMilesOrderByFetchedAtDesc(
+                businessId, addressKey(business), business.getResearchRadiusMiles()).isPresent();
+    }
+
+    private static String addressKey(BusinessProfile business) {
+        return String.join("|", business.getStreetAddress(), business.getCity(),
+                        business.getState(), business.getPostalCode(), business.getIndustry())
+                .strip().toLowerCase(Locale.ROOT);
+    }
+
     public NeighborhoodResponse research(UUID businessId) {
         BusinessProfile business = businesses.findById(businessId)
                 .orElseThrow(() -> new NoSuchElementException(
                         "Business not found: " + businessId));
 
-        String addressKey = String.join("|",
-                        business.getStreetAddress(),
-                        business.getCity(),
-                        business.getState(),
-                        business.getPostalCode(),
-                        business.getIndustry())
-                .strip()
-                .toLowerCase(Locale.ROOT);
+        String addressKey = addressKey(business);
 
         int radius = business.getResearchRadiusMiles();
 

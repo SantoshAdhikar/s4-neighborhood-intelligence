@@ -68,3 +68,6 @@
 .s4-flow-steps .is-current { color: #10264a; font-weight: 800; }
 .s4-flow-steps a:focus-visible, .s4-flow-back:focus-visible { outline: 2px solid #a77943; outline-offset: 3px; }
 .s4-onboarding-nav { max-width: 1440px; margin: 0 auto; padding: 26px clamp(22px, 5vw, 80px) 0; }
+.s4-card-actions .s4-primary-analysis-link{background:#152851;color:#fff;border-color:#152851;font-weight:750}.s4-card-actions .s4-primary-analysis-link:hover{background:#223c72;color:#fff}
+
+.s4-flow-nav .s4-flow-auto{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:.79rem;text-decoration:none;color:#244b91}

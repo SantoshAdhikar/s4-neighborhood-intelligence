@@ -8,6 +8,7 @@ import BusinessOnboarding from './features/onboarding/BusinessOnboarding';
 import NeighborhoodExplorer from './features/neighborhood/NeighborhoodExplorer';
 import StorefrontInspection from './features/storefront/StorefrontInspection';
 import EvidenceReportPage from './features/evidence/EvidenceReportPage';
+import UnifiedAnalysisPage from './features/analysis/UnifiedAnalysisPage';
 import './styles/workspace.css';
 
 function ProtectedWorkspace() {
@@ -20,6 +21,11 @@ function ProtectedWorkspace() {
 function NeighborhoodRoute() {
   const { businessId } = useParams();
   return businessId ? <NeighborhoodExplorer businessId={businessId} /> : <Navigate to="/dashboard" />;
+}
+
+function AnalysisRoute() {
+  const { businessId } = useParams();
+  return businessId ? <UnifiedAnalysisPage businessId={businessId} /> : <Navigate to="/dashboard" />;
 }
 
 function EvidenceRoute() {
@@ -45,6 +51,7 @@ export default function App() {
             <Route path="/businesses/:businessId/neighborhood" element={<NeighborhoodRoute />} />
             <Route path="/businesses/:businessId/storefront" element={<StorefrontRoute />} />
             <Route path="/businesses/:businessId/evidence" element={<EvidenceRoute />} />
+            <Route path="/businesses/:businessId/analyze" element={<AnalysisRoute />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
