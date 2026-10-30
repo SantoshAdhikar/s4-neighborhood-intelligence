@@ -53,14 +53,14 @@ class AnalysisRunServiceTest {
         when(neighborhood.research(businessId)).thenThrow(
                 new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "OSM unavailable"));
         when(neighborhood.hasSavedSnapshot(businessId)).thenReturn(false);
-        when(reports.generateLocal(businessId)).thenReturn(new EvidenceReportResponse(
+        when(reports.generateLocal(businessId, run.getId())).thenReturn(new EvidenceReportResponse(
                 reportId, businessId, "COMPLETED", "ollama/qwen2.5:7b", null,
                 null, null, null, null, null, null, null));
 
         service.process(run.getId());
 
         verify(websiteResearch).research(run, business);
-        verify(reports).generateLocal(businessId);
+        verify(reports).generateLocal(businessId, run.getId());
         assertEquals("COMPLETED", run.getStatus());
         assertEquals(reportId, run.getReportId());
         assertTrue(run.getDetail().contains("Neighborhood discovery was unavailable"));

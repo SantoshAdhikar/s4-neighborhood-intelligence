@@ -155,7 +155,7 @@ public class AnalysisRunService {
                     }
                 }
                 stage(id, "REPORT", "Generating cited recommendations with Meta Muse Spark");
-                var report = reports.generate(run.getBusinessId());
+                var report = reports.generate(run.getBusinessId(), id);
                 if (!"COMPLETED".equals(report.status())) {
                     throw new IllegalStateException(report.lastError() == null
                             ? "Opportunity report did not complete" : report.lastError());
@@ -165,7 +165,7 @@ public class AnalysisRunService {
                 runs.saveAndFlush(run);
             } else {
                 stage(id, "REPORT", "Generating the action plan locally with Ollama; no API charges");
-                var report = reports.generateLocal(run.getBusinessId());
+                var report = reports.generateLocal(run.getBusinessId(), id);
                 if (!"COMPLETED".equals(report.status())) {
                     throw new IllegalStateException(report.lastError() == null
                             ? "Local report generation failed" : report.lastError());

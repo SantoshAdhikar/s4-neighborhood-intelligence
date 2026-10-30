@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { Sparkles, ArrowRight, Building2, MapPinned, Plus, ScanEye, ClipboardList, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Building2, Plus } from 'lucide-react';
 import { listBusinesses } from '../../services/businessApi';
 import { useAuth } from '../../app/useAuth';
 import type { BusinessProfile } from '../../types/business';
@@ -40,12 +40,12 @@ export default function BusinessDashboard() {
             <h2>{business.name}</h2>
             <p>{business.city}, {business.state} · {business.researchRadiusMiles}-mile radius</p>
             <div className="s4-card-actions">
-              <Link className="s4-primary-analysis-link" to={`/businesses/${business.id}/analyze`}><Sparkles size={17} /> Start complete analysis <ArrowRight size={15} /></Link>
-              <Link to={`/businesses/${business.id}/neighborhood`}><MapPinned size={17} /> Neighborhood <ArrowRight size={15} /></Link>
-              <Link to={`/businesses/${business.id}/storefront`}><ScanEye size={17} /> Visual inspection <ArrowRight size={15} /></Link>
-              <Link to={`/businesses/${business.id}/evidence`}><ClipboardList size={17} /> Growth report <ArrowRight size={15} /></Link>
-              <Link to={`/businesses/${business.id}/edit`}><Building2 size={17} /> Edit profile <ArrowRight size={15} /></Link>
-              <Link to={`/businesses/${business.id}/claim`}><ShieldCheck size={17} /> Business ownership review <ArrowRight size={15} /></Link>
+              <Link className="s4-primary-analysis-link" to={`/businesses/${business.id}/analyze`}><img className="s4-business-action-icon" src="/business-actions/start-complete-analysis.png" alt="" /> Start complete analysis <ArrowRight size={15} /></Link>
+              <Link to={`/businesses/${business.id}/neighborhood`}><img className="s4-business-action-icon" src="/business-actions/neighborhood.png" alt="" /> Neighborhood <ArrowRight size={15} /></Link>
+              <Link to={`/businesses/${business.id}/storefront`}><img className="s4-business-action-icon" src="/business-actions/visual-inspection.png" alt="" /> Visual inspection <ArrowRight size={15} /></Link>
+              <Link to={`/businesses/${business.id}/evidence`}><img className="s4-business-action-icon" src="/business-actions/growth-report.png" alt="" /> Growth report <ArrowRight size={15} /></Link>
+              <Link to={`/businesses/${business.id}/edit`}><img className="s4-business-action-icon" src="/business-actions/edit-profile.png" alt="" /> Edit profile <ArrowRight size={15} /></Link>
+              <Link to={`/businesses/${business.id}/claim`}><img className="s4-business-action-icon" src="/business-actions/business-ownership-review.png" alt="" /> Business ownership review <ArrowRight size={15} /></Link>
             </div>
           </article>
         ))}

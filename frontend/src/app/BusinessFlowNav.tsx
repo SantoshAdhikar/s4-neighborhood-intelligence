@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router';
-import { ArrowLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronRight } from 'lucide-react';
 
 type Step = 'profile' | 'neighborhood' | 'storefront' | 'evidence';
 
@@ -7,7 +7,7 @@ export default function BusinessFlowNav({ businessId, current }: { businessId?: 
   return (
     <nav className="s4-flow-nav" aria-label="Business workflow">
       <Link to="/dashboard" className="s4-flow-back"><ArrowLeft size={15} /> All businesses</Link>
-      {businessId && <Link to={`/businesses/${businessId}/analyze`} className="s4-flow-auto"><Sparkles size={15}/> Run everything together</Link>}
+      {businessId && <Link to={`/businesses/${businessId}/analyze`} className="s4-flow-auto"><img className="s4-flow-action-icon" src="/business-actions/start-complete-analysis.png" alt="" /> Run everything together</Link>}
       <div className="s4-flow-steps">
         {businessId ? (
           <>

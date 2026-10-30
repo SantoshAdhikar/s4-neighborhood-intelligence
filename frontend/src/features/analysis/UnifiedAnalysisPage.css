@@ -29,7 +29,7 @@
 .s4-unified-stage{border:1px solid #e4e9f1;border-radius:12px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;color:#7a8698}
 .s4-unified-stage strong{font-size:.83rem;color:#273954}.s4-unified-stage small{font-size:.72rem;line-height:1.45}
 .s4-unified-stage.is-done{border-color:#c8ddcf;background:#f4faf6;color:#237e4d}.s4-unified-stage.is-active{border-color:#a4b9e3;background:#f4f7ff;color:#294d96}
-.s4-unified-run-status,.s4-unified-verified{border-radius:100px;background:#ebf0f8;padding:7px 11px;font-size:.75rem;display:flex;align-items:center;gap:7px}
+.s4-unified-run-status,.s4-unified-model{border-radius:100px;background:#ebf0f8;padding:7px 11px;font-size:.75rem;display:flex;align-items:center;gap:7px}
 .s4-unified-web-grid,.s4-unified-opportunities{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px}
 .s4-unified-web-grid article,.s4-unified-opportunities article{border:1px solid #e0e6ed;border-radius:12px;padding:17px;min-width:0}
 .s4-unified-web-grid h3,.s4-unified-opportunities h3{margin:8px 0;font-size:1.06rem}.s4-unified-web-grid p,.s4-unified-opportunities p{font-size:.85rem;line-height:1.6;color:#4f5d72;overflow-wrap:anywhere}
@@ -67,3 +67,18 @@
 .s4-unified-site-page strong{text-transform:capitalize;color:#28517f}
 .s4-unified-site-page p{font-size:.78rem;margin:7px 0}
 .s4-unified-site-page a{display:inline-block;margin-top:5px}
+
+/* Keep the evidence available without burying the action plan beneath dozens of listings. */
+.s4-unified-research-details{margin-top:18px;border:1px solid #dce5f1;border-radius:12px;background:#f9fbff;padding:0 16px 16px}
+.s4-unified-research-details>summary{cursor:pointer;color:#1f3f77;font-weight:700;font-size:.9rem;line-height:1.5;padding:15px 0}
+.s4-unified-research-details>summary:focus-visible{outline:2px solid #386bc0;outline-offset:4px;border-radius:4px}
+.s4-unified-research-details[open]{background:#fff}
+.s4-unified-model{background:#edf2fc;color:#304e83;max-width:100%;overflow-wrap:anywhere}
+
+.s4-unified-submit-icon {
+  display: block;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  object-fit: contain;
+}

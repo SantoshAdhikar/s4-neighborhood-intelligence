@@ -3,6 +3,7 @@ package com.s4.neighborhood.service;
 import com.s4.neighborhood.dto.EvidenceReportResponse.Source;
 import com.s4.neighborhood.dto.VisualFindings;
 import com.s4.neighborhood.entity.BusinessProfile;
+import com.s4.neighborhood.entity.AnalysisRun;
 import com.s4.neighborhood.entity.NearbyPlace;
 import com.s4.neighborhood.entity.NeighborhoodResearch;
 import com.s4.neighborhood.entity.StorefrontMedia;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -55,11 +57,22 @@ public class EvidenceSourceService {
     }
 
     public EvidenceBundle collect(BusinessProfile business, boolean requireVisual) {
+        return collect(business, requireVisual, null);
+    }
+
+    public EvidenceBundle collect(BusinessProfile business, boolean requireVisual, UUID analysisRunId) {
+        Optional<AnalysisRun> selectedRun = analysisRunId == null
+                ? analysisRuns.findTopByBusinessIdOrderByCreatedAtDesc(business.getId())
+                : Optional.of(analysisRuns.findByIdAndBusinessId(analysisRunId, business.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Analysis run not found")));
         List<Source> sources = new ArrayList<>();
         List<String> limitations = new ArrayList<>();
         String localProfile = "/businesses/" + business.getId() + "/edit";
         sources.add(new Source("profile-goal", "OWNER_PROFILE",
-                "Owner-stated goal: " + limited(business.getPrimaryGoal(), 5000), localProfile, business.getUpdatedAt()));
+                "Owner-stated goal: " + limited(analysisRunId == null ? business.getPrimaryGoal()
+                        : selectedRun.map(AnalysisRun::getGoal).orElse(business.getPrimaryGoal()), 5000),
+                localProfile, analysisRunId == null ? business.getUpdatedAt()
+                : selectedRun.orElseThrow().getCreatedAt()));
         sources.add(new Source("profile-services", "OWNER_PROFILE",
                 "Owner-reported services: " + limited(business.getServices(), 400), localProfile, business.getUpdatedAt()));
         sources.add(new Source("profile-location", "OWNER_PROFILE",
@@ -67,8 +80,21 @@ public class EvidenceSourceService {
                         business.getCity(), business.getState(), business.getPostalCode()), 400),
                 localProfile, business.getUpdatedAt()));
 
+        List<StorefrontMedia> selectedMedia;
+        if (analysisRunId == null) {
+            selectedMedia = media.findByBusinessIdOrderByCreatedAtDesc(business.getId());
+        } else {
+            selectedMedia = selectedRun.map(AnalysisRun::getMediaId)
+                    .flatMap(media::findById)
+                    .filter(item -> business.getId().equals(item.getBusinessId()))
+                    .stream().toList();
+        }
+        if (analysisRunId != null && selectedRun.map(AnalysisRun::getMediaId).isPresent()
+                && selectedMedia.isEmpty()) {
+            limitations.add("The storefront media selected for this analysis is no longer accessible. No visual conclusions can be drawn from it.");
+        }
         int observed = 0;
-        for (StorefrontMedia item : media.findByBusinessIdOrderByCreatedAtDesc(business.getId())) {
+        for (StorefrontMedia item : selectedMedia) {
             if (!"ANALYZED".equals(item.getStatus()) || item.getAnalysisJson() == null) continue;
             if (observed >= 3) break;
             observed++;
@@ -116,7 +142,7 @@ public class EvidenceSourceService {
         var savedNeighborhood = researches.findTopByBusinessIdAndAddressKeyAndRadiusMilesOrderByFetchedAtDesc(
                 business.getId(), NeighborhoodResearchService.addressKey(business),
                 business.getResearchRadiusMiles());
-        var latestRun = analysisRuns.findTopByBusinessIdOrderByCreatedAtDesc(business.getId());
+        var latestRun = selectedRun;
         Set<String> shortlisted = new HashSet<>();
         latestRun.ifPresent(run -> websiteFindings.findByRunIdOrderByFetchedAtAsc(run.getId()).stream()
                 .map(item -> item.getOsmSourceUrl())
@@ -166,7 +192,7 @@ public class EvidenceSourceService {
         } else {
             limitations.add("No neighborhood snapshot is available for this business address and search radius. Nearby competitor claims cannot be verified; the report uses only other available evidence.");
         }
-        analysisRuns.findTopByBusinessIdOrderByCreatedAtDesc(business.getId()).ifPresent(run -> {
+        selectedRun.ifPresent(run -> {
             if (run.getFocusServices() != null && !run.getFocusServices().isBlank()) {
                 sources.add(new Source("research-focus", "OWNER_PROFILE",
                         "Owner-selected competitor research focus: " + limited(run.getFocusServices(), 500)

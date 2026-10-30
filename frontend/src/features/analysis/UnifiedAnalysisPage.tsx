@@ -28,7 +28,7 @@ function Report({ report }: { report: EvidenceReport }) {
   return <section className="s4-unified-report" aria-label="Business growth action report">
     <header className="s4-unified-section-head"><div><p className="s4-kicker">BUSINESS GROWTH REPORT</p>
       <h2>Your three priorities</h2><p>Real model proposals based on saved sources, not predicted revenue.</p></div>
-      <span className="s4-unified-verified"><CheckCircle2 size={16}/> {report.modelName}</span></header>
+      <span className="s4-unified-model"><Sparkles size={16}/> AI recommendations · {report.modelName}</span></header>
     <div className="s4-unified-opportunities">
       {[...report.opportunities].sort((a, b) => a.rank - b.rank).map((item) => <article key={item.rank}>
         <div className="s4-unified-opportunity-rank">PRIORITY {item.rank} · {item.effort.toUpperCase()} EFFORT</div>
@@ -111,17 +111,37 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
 
   useEffect(() => {
     let active = true;
-    void Promise.all([getBusiness(businessId), listStorefrontMedia(businessId), latestAnalysis(businessId), latestEvidenceReport(businessId)])
-      .then(async ([profile, images, previous, savedReport]) => {
+    setLoading(true);
+    setError('');
+    setRun(null);
+    setReport(null);
+    void Promise.all([getBusiness(businessId), listStorefrontMedia(businessId), latestAnalysis(businessId)])
+      .then(async ([profile, images, previous]) => {
+        if (!active) return;
+        setBusiness(profile);
+        setMedia(images);
+        setGoal(profile.primaryGoal);
+        setWebsite(profile.website ?? '');
+        setFocusServices((profile.services ?? '').slice(0, 500));
+        setMediaId(images.find(item => item.status === 'ANALYZED')?.id ?? '');
+        setRun(previous);
+        setLoading(false);
+
+        // An older report may be unavailable even when the active run is healthy.
         const linkedReport = previous?.reportId
           ? await readEvidenceReport(businessId, previous.reportId).catch(() => null)
           : null;
         if (!active) return;
-        setBusiness(profile);setMedia(images);setGoal(profile.primaryGoal);setWebsite(profile.website ?? '');
-        setFocusServices((profile.services ?? '').slice(0, 500));
-        setMediaId(images.find(item => item.status === 'ANALYZED')?.id ?? '');
-        setRun(previous);setReport(linkedReport?.status === 'COMPLETED' ? linkedReport : savedReport?.status === 'COMPLETED' ? savedReport : null);
-      }).catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Could not load business'); })
+        if (linkedReport?.status === 'COMPLETED') {
+          setReport(linkedReport);
+          return;
+        }
+        const savedReport = await latestEvidenceReport(businessId).catch(() => null);
+        if (active && savedReport?.status === 'COMPLETED') setReport(savedReport);
+      })
+      .catch((cause: unknown) => {
+        if (active) setError(cause instanceof Error ? cause.message : 'Could not load business');
+      })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [businessId]);
@@ -133,17 +153,43 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
 
   useEffect(() => {
     if (!activeRunId) return;
+    const runId = activeRunId;
     let active = true;
-    const timer = window.setInterval(() => {
-      void readAnalysis(businessId, activeRunId).then((data) => {
+    let timer: number | undefined;
+
+    async function refreshRun() {
+      try {
+        const data = await readAnalysis(businessId, runId);
         if (!active) return;
-        setRun(data);
         if (data.status === 'COMPLETED' && data.reportId) {
-          void readEvidenceReport(businessId, data.reportId).then((fresh) => { if (active) setReport(fresh); });
+          try {
+            const savedReport = await readEvidenceReport(businessId, data.reportId);
+            if (!active) return;
+            setReport(savedReport);
+            setError('');
+          } catch {
+            if (!active) return;
+            setError('The analysis completed, but its report could not be loaded. Refresh this page to try again.');
+          }
+        } else {
+          setError('');
         }
-      }).catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Could not refresh run status'); });
-    }, 1600);
-    return () => { active = false; window.clearInterval(timer); };
+        setRun(data);
+        if (data.status === 'QUEUED' || data.status === 'RUNNING') {
+          timer = window.setTimeout(() => void refreshRun(), 1600);
+        }
+      } catch (cause) {
+        if (!active) return;
+        setError(cause instanceof Error ? cause.message : 'Could not refresh analysis status. Retrying…');
+        timer = window.setTimeout(() => void refreshRun(), 4000);
+      }
+    }
+
+    void refreshRun();
+    return () => {
+      active = false;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
   }, [businessId, activeRunId]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -220,11 +266,12 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
         <label className="s4-unified-toggle"><input type="checkbox" checked={useMeta} onChange={event => setUseMeta(event.target.checked)} /><span><Coins size={17}/> Automatically inspect the selected photo and generate the report with Meta (uses promotional credits)</span></label>
         {useMeta && <label className="s4-unified-toggle"><input type="checkbox" checked={segmentSign} onChange={event => setSegmentSign(event.target.checked)}/><span>Also run SAM 3.1 sign segmentation if needed (additional credit usage)</span></label>}
       </div>
-      <div className="s4-unified-actions"><button type="submit" disabled={running || !goal.trim()} className="s4-unified-submit">{submitting ? <LoaderCircle className="s4-spin" size={18}/> : <Sparkles size={18}/>} {submitting ? 'Saving your request…' : running ? 'Analysis running…' : 'Start complete analysis'} <ArrowRight size={18}/></button>
+      <div className="s4-unified-actions"><button type="submit" disabled={running || !goal.trim()} className="s4-unified-submit">{submitting ? <LoaderCircle className="s4-spin" size={18}/> : <img className="s4-unified-submit-icon" src="/business-actions/start-complete-analysis.png" alt="" />} {submitting ? 'Saving your request…' : running ? 'Analysis running…' : 'Start complete analysis'} <ArrowRight size={18}/></button>
       <span>{useMeta ? 'One click runs neighborhood research, website checks, optional photo inspection, and the Meta report. API credits may be used.' : 'One click runs neighborhood research, website checks and a local Ollama report. Saved photos are not visually analyzed in local mode.'}</span></div>
     </form>}
     {error && <p role="alert" className="s4-form-error"><CircleAlert size={16}/> {error}</p>}
     {run && <Progress run={run}/>}
+    {freshReport && report && <Report report={report}/>}
     {run && run.websites.length > 0 && <section className="s4-unified-websites">
       <div className="s4-unified-section-head"><div><p className="s4-kicker">FREE COMPETITOR & WEBSITE RESEARCH</p>
         <h2>Nearby industry comparison</h2>
@@ -242,6 +289,8 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
       {!legacyResearch && competitors.length < 50 && <p className="s4-unified-shortfall">{run?.detail.includes('Neighborhood discovery was unavailable') ? 'Live neighborhood discovery was unavailable. This report cannot establish nearby competitors, but website and available evidence analysis can still complete.' : 'The available open-place datasets identified fewer than 50 category-matched businesses. S4 will not invent listings or label unrelated shops as direct competitors. You can expand the radius in Business Settings if needed.'}</p>}
       <p className="s4-unified-source-note">Research focus: {run.focusServices || business?.services || 'General industry'}. Industry and service-focus candidates are ranked from business names and contributed categories, not independently confirmed service menus. Google review text is not automatically collected.</p>
       <p className="s4-unified-source-note">Candidates come from OpenStreetMap and, when configured, Overture Maps. Verify business identity, service overlap and website ownership before using findings to make competitive claims.</p>
+      <details className="s4-unified-research-details">
+        <summary>Explore {competitors.length} nearby candidates and {run.pages?.length ?? 0} website-page records</summary>
       {competitors.length > 12 && <div className="s4-unified-expand">
         <span>Showing {showAllCompetitors ? competitors.length : 12} of {competitors.length} nearby candidates (plus your website).</span>
         <button type="button" onClick={() => setShowAllCompetitors(current => !current)} aria-expanded={showAllCompetitors}>
@@ -277,8 +326,8 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
             target="_blank" rel="noopener noreferrer">Check Google Maps manually</a>}
         </div>
       </article>)}</div>
+      </details>
     </section>}
-    {freshReport && report && <Report report={report}/>}
     {run?.status === 'COMPLETED' && !run.useMeta && <div className="s4-unified-free"><CheckCircle2 size={20}/><div><strong>Your free research and local AI report are saved.</strong><p>No Meta API calls were made. Recommendations from a local model still need owner review and evidence verification.</p></div></div>}
     {run?.status === 'FAILED' && <div className="s4-unified-free"><CircleAlert size={20}/><div><strong>Your completed research is preserved.</strong><p>Review the error above; you can start a new run without deleting your business or existing images.</p></div></div>}
     {report && !freshReport && <details className="s4-unified-previous"><summary>Previously saved Growth Report (not regenerated in this run)</summary><Report report={report}/></details>}

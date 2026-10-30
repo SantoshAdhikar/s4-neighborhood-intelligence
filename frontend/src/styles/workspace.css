@@ -84,3 +84,23 @@
 .s4-claim-warning { padding: 14px; background: #fff9e9; border: 1px solid #f0dfb4; border-radius: 10px; margin: 16px 0; }
 .s4-verify-email { display: flex; align-items: center; justify-content: center; padding: 30px; }
 .s4-verify-email .s4-auth-card { width: min(90vw, 540px); }
+
+/* Business action artwork stays decorative; the link text provides the accessible name. */
+.s4-card-actions .s4-business-action-icon {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex: 0 0 32px;
+}
+.s4-card-actions .s4-primary-analysis-link .s4-business-action-icon {
+  width: 35px;
+  height: 35px;
+  flex-basis: 35px;
+}
+.s4-flow-action-icon {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 21px;
+  object-fit: contain;
+}

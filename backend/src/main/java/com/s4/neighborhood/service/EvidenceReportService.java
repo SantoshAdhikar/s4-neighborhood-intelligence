@@ -54,17 +54,25 @@ public class EvidenceReportService {
     }
 
     public EvidenceReportResponse generate(UUID businessId) {
-        return generate(businessId, false);
+        return generate(businessId, false, null);
+    }
+
+    public EvidenceReportResponse generate(UUID businessId, UUID analysisRunId) {
+        return generate(businessId, false, analysisRunId);
     }
 
     public EvidenceReportResponse generateLocal(UUID businessId) {
-        return generate(businessId, true);
+        return generate(businessId, true, null);
     }
 
-    private EvidenceReportResponse generate(UUID businessId, boolean localMode) {
+    public EvidenceReportResponse generateLocal(UUID businessId, UUID analysisRunId) {
+        return generate(businessId, true, analysisRunId);
+    }
+
+    private EvidenceReportResponse generate(UUID businessId, boolean localMode, UUID analysisRunId) {
         BusinessProfile business = businesses.findById(businessId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Business not found"));
-        EvidenceSourceService.EvidenceBundle bundle = sources.collect(business, false);
+        EvidenceSourceService.EvidenceBundle bundle = sources.collect(business, false, analysisRunId);
         String fingerprint = fingerprint(bundle, localMode);
         EvidenceReport report = reports.findByBusinessIdAndSourceFingerprint(businessId, fingerprint)
                 .orElseGet(() -> createReport(businessId, fingerprint));
