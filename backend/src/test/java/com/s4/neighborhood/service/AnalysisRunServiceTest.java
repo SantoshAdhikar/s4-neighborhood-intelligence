@@ -8,6 +8,12 @@ import com.s4.neighborhood.repository.BusinessProfileRepository;
 import com.s4.neighborhood.repository.WebsiteFindingRepository;
 import com.s4.neighborhood.repository.WebsitePageFindingRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+
+import java.util.List;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -35,6 +41,52 @@ class AnalysisRunServiceTest {
     @InjectMocks AnalysisRunService service;
 
     @Test
+    void historyReturnsOnlyLightweightBusinessScopedSummaries() {
+        UUID businessId = UUID.randomUUID();
+        AnalysisRun run = new AnalysisRun();
+        run.setBusinessId(businessId);
+        run.setGoal("Grow local bookings");
+        run.setStatus("COMPLETED");
+        UUID reportId = UUID.randomUUID();
+        run.setReportId(reportId);
+        when(runs.findByBusinessId(eq(businessId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(run), PageRequest.of(0, 20), 21));
+
+        var result = service.history(businessId, 0);
+
+        assertEquals(1, result.items().size());
+        assertEquals(run.getId(), result.items().getFirst().id());
+        assertEquals(reportId, result.items().getFirst().reportId());
+        assertEquals("Grow local bookings", result.items().getFirst().goal());
+        assertTrue(result.hasMore());
+        var paging = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        verify(runs).findByBusinessId(eq(businessId), paging.capture());
+        assertEquals(20, paging.getValue().getPageSize());
+        assertEquals(Sort.Direction.DESC,
+                paging.getValue().getSort().getOrderFor("createdAt").getDirection());
+        verifyNoInteractions(websites, pages, reports);
+    }
+
+    @Test
+    void historyRejectsInvalidPagesBeforeAccessingDatabase() {
+        var error = assertThrows(ResponseStatusException.class,
+                () -> service.history(UUID.randomUUID(), -1));
+        assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
+        verifyNoInteractions(runs);
+    }
+
+    @Test
+    void readingAnotherBusinessRunReturnsNotFound() {
+        UUID businessId = UUID.randomUUID();
+        UUID runId = UUID.randomUUID();
+        when(runs.findByIdAndBusinessId(runId, businessId)).thenReturn(Optional.empty());
+        var error = assertThrows(ResponseStatusException.class,
+                () -> service.get(businessId, runId));
+        assertEquals(HttpStatus.NOT_FOUND, error.getStatusCode());
+        verifyNoInteractions(websites, pages);
+    }
+
+    @Test
     void proceedsToWebsiteAndReportWhenNeighborhoodProviderUnavailableAndNoSnapshotExists() {
         UUID businessId = UUID.randomUUID();
         UUID reportId = UUID.randomUUID();
@@ -55,7 +107,7 @@ class AnalysisRunServiceTest {
         when(neighborhood.hasSavedSnapshot(businessId)).thenReturn(false);
         when(reports.generateLocal(businessId, run.getId())).thenReturn(new EvidenceReportResponse(
                 reportId, businessId, "COMPLETED", "ollama/qwen2.5:7b", null,
-                null, null, null, null, null, null, null));
+                null, null, null, null, null, null, null, null));
 
         service.process(run.getId());
 

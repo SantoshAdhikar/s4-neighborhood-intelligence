@@ -2,6 +2,7 @@ package com.s4.neighborhood.service;
 
 import com.s4.neighborhood.dto.AnalysisRunRequest;
 import com.s4.neighborhood.dto.AnalysisRunResponse;
+import com.s4.neighborhood.dto.AnalysisRunHistoryResponse;
 import com.s4.neighborhood.entity.AnalysisRun;
 import com.s4.neighborhood.entity.BusinessProfile;
 import com.s4.neighborhood.entity.WebsiteFinding;
@@ -12,6 +13,8 @@ import com.s4.neighborhood.repository.WebsitePageFindingRepository;
 import org.springframework.context.event.EventListener;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -107,6 +110,20 @@ public class AnalysisRunService {
 
     public Optional<AnalysisRunResponse> latest(UUID businessId) {
         return runs.findTopByBusinessIdOrderByCreatedAtDesc(businessId).map(this::response);
+    }
+
+    public AnalysisRunHistoryResponse history(UUID businessId, int page) {
+        if (page < 0 || page > 10000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid history page");
+        }
+        var request = PageRequest.of(page, 20, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        var result = runs.findByBusinessId(businessId, request);
+        var items = result.getContent().stream()
+                .map(run -> new AnalysisRunHistoryResponse.Item(run.getId(), run.getStatus(),
+                        run.getGoal(), run.getCreatedAt(), run.getCompletedAt(),
+                        run.getReportId(), run.isUseMeta()))
+                .toList();
+        return new AnalysisRunHistoryResponse(items, page, result.hasNext());
     }
 
     public AnalysisRunResponse get(UUID businessId, UUID runId) {

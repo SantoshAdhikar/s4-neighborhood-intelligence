@@ -82,3 +82,42 @@
   flex: 0 0 26px;
   object-fit: contain;
 }
+
+/* Evidence coverage describes source types, not model confidence or predicted success. */
+.s4-evidence-coverage{border:1px solid #dae4f1;background:#f5f8fd;border-radius:9px;padding:11px 12px;margin:11px 0;color:#203b61}
+.s4-evidence-coverage strong{display:block;font-size:.79rem;color:#254779}
+.s4-evidence-coverage p{font-size:.78rem;margin:5px 0;line-height:1.5;color:#475d7a}
+.s4-evidence-coverage small{font-size:.72rem;color:#62748d}
+.s4-coverage-context{background:#fffbf1;border-color:#eedeb8}
+.s4-coverage-context strong{color:#866222}
+.s4-coverage-owner-only{background:#f8f8fb;border-color:#e1e4ed}
+.s4-coverage-owner-only strong{color:#586278}
+
+
+/* Saved analysis runs are read-only; selecting one never starts a model request. */
+.s4-unified-history{background:#fff;border:1px solid #dee5ee;border-radius:18px;padding:24px 28px;margin:0 0 24px;box-shadow:0 6px 24px #14254b09}
+.s4-unified-history-heading{display:flex;align-items:start;justify-content:space-between;gap:18px;margin-bottom:16px}
+.s4-unified-history-heading h2{font-size:1.45rem;letter-spacing:-.025em;margin:6px 0}
+.s4-unified-history-heading p:not(.s4-kicker){font-size:.86rem;color:#65748a;margin:0;line-height:1.5}
+.s4-unified-history-latest{display:inline-block;border:1px solid #ccd8e9;border-radius:9px;padding:10px 13px;color:#234d8b;text-decoration:none;white-space:nowrap;font-size:.82rem;font-weight:700}
+.s4-unified-history-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.s4-unified-history-item{display:block;min-width:0;border:1px solid #e0e7f0;border-radius:12px;padding:13px 15px;text-decoration:none;color:#152b53;background:#fafcff}
+.s4-unified-history-item:hover{border-color:#b2c5e4;background:#f5f8ff}
+.s4-unified-history-item:focus-visible,.s4-unified-history-latest:focus-visible,.s4-unified-history-more:focus-visible{outline:3px solid #547dcd;outline-offset:2px}
+.s4-unified-history-item.is-selected{border-color:#5277b6;background:#edf3ff;box-shadow:inset 0 0 0 1px #5277b6}
+.s4-unified-history-item-title{display:flex;align-items:start;justify-content:space-between;gap:8px}
+.s4-unified-history-item-title strong{font-size:.8rem;line-height:1.45}
+.s4-unified-history-item p{color:#4f6080;margin:8px 0 7px;font-size:.81rem;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.s4-unified-history-item small{color:#65748a;font-size:.72rem}
+.s4-unified-history-status{flex:0 0 auto;font-size:.67rem;font-weight:800;border-radius:100px;padding:3px 7px;background:#edf1f7;color:#485e82}
+.s4-unified-history-status.is-completed{background:#e7f6ea;color:#236d42}
+.s4-unified-history-status.is-failed{background:#fff0ed;color:#a34534}
+.s4-unified-history-status.is-running,.s4-unified-history-status.is-queued{background:#e9efff;color:#315da0}
+.s4-unified-history-more{margin-top:14px;padding:9px 12px;border-radius:9px;border:1px solid #c6d4e7;background:white;color:#23487b;cursor:pointer;font:inherit;font-size:.82rem;font-weight:700}
+.s4-unified-history-more:disabled{opacity:.6;cursor:wait}
+.s4-unified-history-empty{color:#66748c;font-size:.86rem}
+@media(max-width:850px){.s4-unified-history{padding:18px}.s4-unified-history-list{grid-template-columns:1fr}.s4-unified-history-heading{flex-wrap:wrap}}
+
+.s4-unified-history-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+button.s4-unified-history-latest{background:#fff;cursor:pointer;font:inherit;font-size:.82rem;font-weight:700}
+button.s4-unified-history-latest:disabled{opacity:.55;cursor:wait}

@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { ArrowRight, BookOpen, CheckCircle2, CircleAlert, Clock3, Coins, FileImage, Globe, LoaderCircle, MapPinned, Radar, Sparkles } from 'lucide-react';
 import { getBusiness } from '../../services/businessApi';
 import { listStorefrontMedia, uploadStorefrontMedia } from '../../services/storefrontApi';
 import { latestEvidenceReport, readEvidenceReport } from '../../services/evidenceApi';
-import { latestAnalysis, readAnalysis, startAnalysis } from '../../services/analysisApi';
-import type { AnalysisRun } from '../../types/analysis';
+import { latestAnalysis, listAnalysisHistory, readAnalysis, startAnalysis } from '../../services/analysisApi';
+import type { AnalysisRun, AnalysisRunHistoryItem } from '../../types/analysis';
 import type { BusinessProfile } from '../../types/business';
 import type { EvidenceReport, EvidenceSource } from '../../types/evidence';
 import type { StorefrontMedia } from '../../types/storefront';
@@ -23,8 +23,20 @@ function sourcesFor(ids: string[], sources: Map<string, EvidenceSource>) {
   return ids.map((id) => sources.get(id)).filter((source): source is EvidenceSource => Boolean(source));
 }
 
+type EvidenceCoverageItem = {
+  rank: number;
+  level: string;
+  label: string;
+  explanation: string;
+  observedSources: number;
+  contextualSources: number;
+  ownerSources: number;
+};
+
 function Report({ report }: { report: EvidenceReport }) {
   const sources = useMemo(() => new Map(report.sources.map((source) => [source.id, source])), [report.sources]);
+  const coverageItems = (report as EvidenceReport & { evidenceCoverage?: EvidenceCoverageItem[] }).evidenceCoverage;
+  const coverage = useMemo(() => new Map((coverageItems ?? []).map((item) => [item.rank, item])), [coverageItems]);
   return <section className="s4-unified-report" aria-label="Business growth action report">
     <header className="s4-unified-section-head"><div><p className="s4-kicker">BUSINESS GROWTH REPORT</p>
       <h2>Your three priorities</h2><p>Real model proposals based on saved sources, not predicted revenue.</p></div>
@@ -33,6 +45,11 @@ function Report({ report }: { report: EvidenceReport }) {
       {[...report.opportunities].sort((a, b) => a.rank - b.rank).map((item) => <article key={item.rank}>
         <div className="s4-unified-opportunity-rank">PRIORITY {item.rank} · {item.effort.toUpperCase()} EFFORT</div>
         <h3>{item.title}</h3><p>{item.rationale}</p>
+        {coverage.get(item.rank) && <div className={`s4-evidence-coverage s4-coverage-${coverage.get(item.rank)?.level.toLowerCase().replaceAll('_', '-')}`}>
+          <strong>{coverage.get(item.rank)?.label}</strong>
+          <p>{coverage.get(item.rank)?.explanation}</p>
+          <small>{coverage.get(item.rank)?.observedSources} observed · {coverage.get(item.rank)?.contextualSources} contextual · {coverage.get(item.rank)?.ownerSources} owner provided</small>
+        </div>}
         <div className="s4-unified-note"><strong>Measure:</strong> {item.measurement}</div>
         <details><summary>Supporting evidence ({item.evidenceIds.length})</summary>
           {sourcesFor(item.evidenceIds, sources).map((source) => <p key={source.id}><a href={source.sourceUrl} target={source.sourceUrl.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer"><BookOpen size={13}/> {source.kind.replaceAll('_', ' ').toLowerCase()}</a> {source.description}</p>)}
@@ -72,6 +89,14 @@ function Progress({ run }: { run: AnalysisRun }) {
 }
 
 export default function UnifiedAnalysisPage({ businessId }: { businessId: string }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const savedRunId = searchParams.get('runId');
+  const [history, setHistory] = useState<AnalysisRunHistoryItem[]>([]);
+  const [expandedHistory, setExpandedHistory] = useState(Boolean(savedRunId));
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyHasMore, setHistoryHasMore] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
   const [media, setMedia] = useState<StorefrontMedia[]>([]);
   const [goal, setGoal] = useState('');
@@ -111,14 +136,18 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setError('');
-    setRun(null);
-    setReport(null);
-    void Promise.all([getBusiness(businessId), listStorefrontMedia(businessId), latestAnalysis(businessId)])
-      .then(async ([profile, images, previous]) => {
+    const previousRequest = savedRunId ? readAnalysis(businessId, savedRunId) : latestAnalysis(businessId);
+    const historyRequest = listAnalysisHistory(businessId).catch(() => null);
+    void Promise.all([getBusiness(businessId), listStorefrontMedia(businessId), previousRequest, historyRequest])
+      .then(async ([profile, images, previous, savedHistory]) => {
         if (!active) return;
         setBusiness(profile);
+        if (savedHistory) {
+          setHistory(savedHistory.items);
+          setHistoryHasMore(savedHistory.hasMore);
+        } else {
+          setHistoryError('Saved analysis history could not be loaded. Try refreshing the page.');
+        }
         setMedia(images);
         setGoal(profile.primaryGoal);
         setWebsite(profile.website ?? '');
@@ -136,15 +165,52 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
           setReport(linkedReport);
           return;
         }
-        const savedReport = await latestEvidenceReport(businessId).catch(() => null);
-        if (active && savedReport?.status === 'COMPLETED') setReport(savedReport);
+        // Only the default/latest view may show a legacy standalone report.
+        // Never attach an unrelated report to a historical run.
+        if (!savedRunId) {
+          const savedReport = await latestEvidenceReport(businessId).catch(() => null);
+          if (active && savedReport?.status === 'COMPLETED') setReport(savedReport);
+        }
       })
       .catch((cause: unknown) => {
         if (active) setError(cause instanceof Error ? cause.message : 'Could not load business');
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [businessId]);
+  }, [businessId, savedRunId]);
+
+  async function refreshHistory() {
+    if (historyLoading) return;
+    setHistoryLoading(true);
+    setHistoryError('');
+    try {
+      const data = await listAnalysisHistory(businessId);
+      setHistory(data.items);
+      setHistoryPage(0);
+      setHistoryHasMore(data.hasMore);
+    } catch (cause) {
+      setHistoryError(cause instanceof Error ? cause.message : 'Could not refresh saved analyses.');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  async function loadMoreHistory() {
+    if (historyLoading || !historyHasMore) return;
+    setHistoryLoading(true);
+    setHistoryError('');
+    try {
+      const nextPage = historyPage + 1;
+      const data = await listAnalysisHistory(businessId, nextPage);
+      setHistory(previous => [...previous, ...data.items.filter(item => !previous.some(saved => saved.id === item.id))]);
+      setHistoryPage(nextPage);
+      setHistoryHasMore(data.hasMore);
+    } catch (cause) {
+      setHistoryError(cause instanceof Error ? cause.message : 'Could not load earlier analyses.');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
 
   const activeRunId =
     run?.status === 'QUEUED' || run?.status === 'RUNNING'
@@ -175,6 +241,9 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
           setError('');
         }
         setRun(data);
+        setHistory(previous => previous.map(item => item.id === data.id
+          ? { ...item, status: data.status, completedAt: data.completedAt, reportId: data.reportId }
+          : item));
         if (data.status === 'QUEUED' || data.status === 'RUNNING') {
           timer = window.setTimeout(() => void refreshRun(), 1600);
         }
@@ -194,7 +263,8 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting || run?.status === 'QUEUED' || run?.status === 'RUNNING') return;
+    if (submitting || run?.status === 'QUEUED' || run?.status === 'RUNNING'
+      || history.some(item => item.status === 'QUEUED' || item.status === 'RUNNING')) return;
     setSubmitting(true);setError('');setShowAllCompetitors(false);
     try {
       let selectedId = mediaId || null;
@@ -210,12 +280,15 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
         mediaId: selectedId, useMeta, segmentSign: useMeta && segmentSign,
       });
       setRun(result);
+      // Return to the latest view after a successful new submission.
+      if (savedRunId) setSearchParams({});
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not start analysis');
     } finally { setSubmitting(false); }
   }
 
-  const running = submitting || run?.status === 'QUEUED' || run?.status === 'RUNNING';
+  const running = submitting || run?.status === 'QUEUED' || run?.status === 'RUNNING'
+    || history.some(item => item.status === 'QUEUED' || item.status === 'RUNNING');
   const competitors = run?.websites.filter(site => site.kind === 'NEARBY_COMPETITOR') ?? [];
   const legacyResearch = run?.websites.some(site => site.kind === 'NEARBY_WEBSITE') && competitors.length === 0;
   const specialtyCount = competitors.filter(site => site.matchLevel === 'DIRECT_SPECIALTY').length;
@@ -226,6 +299,7 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
     ...(run?.websites.filter(site => site.kind !== 'NEARBY_COMPETITOR') ?? []),
     ...(showAllCompetitors ? competitors : competitors.slice(0, 12)),
   ];
+  const visibleHistory = expandedHistory ? history : history.slice(0, 3);
   const freshReport = run?.status === 'COMPLETED' && Boolean(run.reportId && report?.id === run.reportId);
 
   return <main className="s4-unified-page">
@@ -234,6 +308,33 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
       <h1>One analysis. One clear action plan.</h1><p>Tell S4 what you want to improve. We'll gather available local and website evidence, examine your photo when authorized, and present the findings here.</p>
       <div className="s4-unified-benefits"><span><MapPinned size={16}/> Nearby businesses</span><span><Globe size={16}/> Public websites</span><span><FileImage size={16}/> Storefront evidence</span><span><Radar size={16}/> Prioritized actions</span></div>
     </header>
+    <section className="s4-unified-history" aria-label="Saved analysis history">
+      <div className="s4-unified-history-heading">
+        <div><p className="s4-kicker">SAVED ANALYSES</p><h2>Analysis history</h2>
+          <p>Reopen earlier findings without generating a new report or using AI credits.</p></div>
+        <div className="s4-unified-history-toolbar">
+          <button type="button" onClick={() => void refreshHistory()} disabled={historyLoading}
+            className="s4-unified-history-latest">Refresh list</button>
+          {savedRunId && <Link className="s4-unified-history-latest" to={`/businesses/${businessId}/analyze`}>View latest</Link>}
+        </div>
+      </div>
+      {history.length > 0 ? <div className="s4-unified-history-list">
+        {visibleHistory.map((item, index) => <Link key={item.id}
+          to={`/businesses/${businessId}/analyze?runId=${encodeURIComponent(item.id)}`}
+          className={`s4-unified-history-item ${run?.id === item.id ? 'is-selected' : ''}`}
+          aria-current={run?.id === item.id ? 'page' : undefined}>
+          <div className="s4-unified-history-item-title"><strong>{index === 0 ? 'Most recent' : 'Previous analysis'} · {new Date(item.createdAt).toLocaleString()}</strong>
+            <span className={`s4-unified-history-status is-${item.status.toLowerCase()}`}>{item.status}</span></div>
+          <p>{item.goal}</p><small>{item.useMeta ? 'Meta AI' : 'Local AI'} · {item.reportId ? 'Saved growth report' : 'Research record'}{run?.id === item.id ? ' · Viewing now' : ''}</small>
+        </Link>)}
+      </div> : !loading && <p className="s4-unified-history-empty">No saved analyses found for this business yet.</p>}
+      {history.length > 3 && <button type="button" className="s4-unified-history-more"
+        onClick={() => setExpandedHistory(current => !current)}>{expandedHistory ? 'Show recent 3' : `See all ${history.length} recent analyses`}</button>}
+      {historyHasMore && expandedHistory && <button type="button" className="s4-unified-history-more" disabled={historyLoading}
+        onClick={() => void loadMoreHistory()}>{historyLoading ? 'Loading earlier analyses…' : 'Show older analyses'}</button>}
+      {savedRunId && run && !history.some(item => item.id === run.id) && <p className="s4-unified-history-empty">Viewing archived analysis from {new Date(run.createdAt).toLocaleString()}.</p>}
+      {historyError && <p role="alert" className="s4-form-error">{historyError}</p>}
+    </section>
     {loading ? <p>Loading business profile…</p> : <form className="s4-unified-form" onSubmit={(event) => void submit(event)}>
       <div className="s4-unified-section-head"><div><p className="s4-kicker">NEW ANALYSIS</p><h2>{business?.name}</h2><p>All requirements in one place. No more switching between steps.</p></div></div>
       <label htmlFor="s4-unified-goal">What is your main business goal?</label>
@@ -330,7 +431,7 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
     </section>}
     {run?.status === 'COMPLETED' && !run.useMeta && <div className="s4-unified-free"><CheckCircle2 size={20}/><div><strong>Your free research and local AI report are saved.</strong><p>No Meta API calls were made. Recommendations from a local model still need owner review and evidence verification.</p></div></div>}
     {run?.status === 'FAILED' && <div className="s4-unified-free"><CircleAlert size={20}/><div><strong>Your completed research is preserved.</strong><p>Review the error above; you can start a new run without deleting your business or existing images.</p></div></div>}
-    {report && !freshReport && <details className="s4-unified-previous"><summary>Previously saved Growth Report (not regenerated in this run)</summary><Report report={report}/></details>}
+    {!savedRunId && report && !freshReport && <details className="s4-unified-previous"><summary>Previously saved Growth Report (not regenerated in this run)</summary><Report report={report}/></details>}
     <footer className="s4-unified-footer"><span>Advanced tools remain available:</span>
       <Link to={`/businesses/${businessId}/neighborhood`}>Neighborhood</Link>
       <Link to={`/businesses/${businessId}/storefront`}>Visual Inspection</Link>

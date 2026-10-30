@@ -28,6 +28,7 @@ export default function EvidenceReportPage({ businessId }: { businessId: string 
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const sourceMap = useMemo(() => new Map((report?.sources ?? []).map((source) => [source.id, source])), [report]);
+  const coverage = useMemo(() => new Map((report?.evidenceCoverage ?? []).map((item) => [item.rank, item])), [report]);
 
   useEffect(() => {
     let active = true;
@@ -98,6 +99,11 @@ export default function EvidenceReportPage({ businessId }: { businessId: string 
                 <div className="s4-opportunity-head"><span>#{item.rank} PRIORITY</span><span>{item.effort} effort</span></div>
                 <h3>{item.title}</h3>
                 <p>{item.rationale}</p>
+                {coverage.get(item.rank) && <div className={`s4-evidence-coverage s4-coverage-${coverage.get(item.rank)?.level.toLowerCase().replaceAll('_', '-')}`}>
+                  <strong>{coverage.get(item.rank)?.label}</strong>
+                  <p>{coverage.get(item.rank)?.explanation}</p>
+                  <small>{coverage.get(item.rank)?.observedSources} observed · {coverage.get(item.rank)?.contextualSources} contextual · {coverage.get(item.rank)?.ownerSources} owner provided</small>
+                </div>}
                 <strong>Supporting evidence</strong>
                 <SourceTags ids={item.evidenceIds} sources={sourceMap} />
                 <div className="s4-opportunity-uncertainty"><strong>Uncertainty</strong><p>{item.uncertainty}</p></div>

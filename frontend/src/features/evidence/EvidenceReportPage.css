@@ -37,3 +37,13 @@
 .s4-evidence-limitations li, .s4-evidence-limitations p { line-height: 1.65; font-size: 13px; color: #52657d; }
 @media (max-width: 1100px) { .s4-evidence-opportunities { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .s4-evidence-source-row { grid-template-columns: 1fr; gap: 4px; } .s4-action-day { grid-template-columns: 1fr; } }
+
+/* Evidence coverage describes source types, not model confidence or predicted success. */
+.s4-evidence-coverage{border:1px solid #dae4f1;background:#f5f8fd;border-radius:9px;padding:11px 12px;margin:11px 0;color:#203b61}
+.s4-evidence-coverage strong{display:block;font-size:.79rem;color:#254779}
+.s4-evidence-coverage p{font-size:.78rem;margin:5px 0;line-height:1.5;color:#475d7a}
+.s4-evidence-coverage small{font-size:.72rem;color:#62748d}
+.s4-coverage-context{background:#fffbf1;border-color:#eedeb8}
+.s4-coverage-context strong{color:#866222}
+.s4-coverage-owner-only{background:#f8f8fb;border-color:#e1e4ed}
+.s4-coverage-owner-only strong{color:#586278}

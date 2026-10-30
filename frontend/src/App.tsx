@@ -1,20 +1,26 @@
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router';
+import { lazy, Suspense, type ReactNode } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router';
 import { AuthProvider } from './app/AuthContext';
 import { useAuth } from './app/useAuth';
 import AppShell from './app/AppShell';
-import AccountAccess from './features/auth/AccountAccess';
-import PasswordResetPage from './features/auth/PasswordResetPage';
 import GlassCursor from './components/GlassCursor';
-import VerifyEmailPage from './features/auth/VerifyEmailPage';
-import BusinessClaimPage from './features/claims/BusinessClaimPage';
-import BusinessDashboard from './features/dashboard/BusinessDashboard';
-import BusinessOnboarding from './features/onboarding/BusinessOnboarding';
-import NeighborhoodExplorer from './features/neighborhood/NeighborhoodExplorer';
-import StorefrontInspection from './features/storefront/StorefrontInspection';
-import EvidenceReportPage from './features/evidence/EvidenceReportPage';
-import UnifiedAnalysisPage from './features/analysis/UnifiedAnalysisPage';
 import './styles/workspace.css';
 import './styles/glass.css';
+
+const AccountAccess = lazy(() => import('./features/auth/AccountAccess'));
+const PasswordResetPage = lazy(() => import('./features/auth/PasswordResetPage'));
+const VerifyEmailPage = lazy(() => import('./features/auth/VerifyEmailPage'));
+const BusinessClaimPage = lazy(() => import('./features/claims/BusinessClaimPage'));
+const BusinessDashboard = lazy(() => import('./features/dashboard/BusinessDashboard'));
+const BusinessOnboarding = lazy(() => import('./features/onboarding/BusinessOnboarding'));
+const NeighborhoodExplorer = lazy(() => import('./features/neighborhood/NeighborhoodExplorer'));
+const StorefrontInspection = lazy(() => import('./features/storefront/StorefrontInspection'));
+const EvidenceReportPage = lazy(() => import('./features/evidence/EvidenceReportPage'));
+const UnifiedAnalysisPage = lazy(() => import('./features/analysis/UnifiedAnalysisPage'));
+
+function DeferredPage({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<div className="s4-loading" role="status">Loading page…</div>}>{children}</Suspense>;
+}
 
 function ProtectedWorkspace() {
   const { account, loading } = useAuth();
@@ -30,7 +36,9 @@ function NeighborhoodRoute() {
 
 function AnalysisRoute() {
   const { businessId } = useParams();
-  return businessId ? <UnifiedAnalysisPage businessId={businessId} /> : <Navigate to="/dashboard" />;
+  const { search } = useLocation();
+  // A distinct history URL must load its matching saved run and report.
+  return businessId ? <UnifiedAnalysisPage key={`${businessId}:${search}`} businessId={businessId} /> : <Navigate to="/dashboard" />;
 }
 
 function ClaimRoute() {
@@ -54,19 +62,19 @@ export default function App() {
       <GlassCursor />
       <AuthProvider>
         <Routes>
-          <Route path="/login" element={<AccountAccess />} />
-          <Route path="/forgot-password" element={<PasswordResetPage />} />
-          <Route path="/reset-password" element={<PasswordResetPage />} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/login" element={<DeferredPage><AccountAccess /></DeferredPage>} />
+          <Route path="/forgot-password" element={<DeferredPage><PasswordResetPage /></DeferredPage>} />
+          <Route path="/reset-password" element={<DeferredPage><PasswordResetPage /></DeferredPage>} />
+          <Route path="/verify-email" element={<DeferredPage><VerifyEmailPage /></DeferredPage>} />
           <Route element={<ProtectedWorkspace />}>
-            <Route path="/dashboard" element={<BusinessDashboard />} />
-            <Route path="/businesses/new" element={<BusinessOnboarding />} />
-            <Route path="/businesses/:businessId/edit" element={<BusinessOnboarding />} />
-            <Route path="/businesses/:businessId/claim" element={<ClaimRoute />} />
-            <Route path="/businesses/:businessId/neighborhood" element={<NeighborhoodRoute />} />
-            <Route path="/businesses/:businessId/storefront" element={<StorefrontRoute />} />
-            <Route path="/businesses/:businessId/evidence" element={<EvidenceRoute />} />
-            <Route path="/businesses/:businessId/analyze" element={<AnalysisRoute />} />
+            <Route path="/dashboard" element={<DeferredPage><BusinessDashboard /></DeferredPage>} />
+            <Route path="/businesses/new" element={<DeferredPage><BusinessOnboarding /></DeferredPage>} />
+            <Route path="/businesses/:businessId/edit" element={<DeferredPage><BusinessOnboarding /></DeferredPage>} />
+            <Route path="/businesses/:businessId/claim" element={<DeferredPage><ClaimRoute /></DeferredPage>} />
+            <Route path="/businesses/:businessId/neighborhood" element={<DeferredPage><NeighborhoodRoute /></DeferredPage>} />
+            <Route path="/businesses/:businessId/storefront" element={<DeferredPage><StorefrontRoute /></DeferredPage>} />
+            <Route path="/businesses/:businessId/evidence" element={<DeferredPage><EvidenceRoute /></DeferredPage>} />
+            <Route path="/businesses/:businessId/analyze" element={<DeferredPage><AnalysisRoute /></DeferredPage>} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

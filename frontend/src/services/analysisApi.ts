@@ -1,5 +1,5 @@
 import { apiFetch, readJson } from './apiClient';
-import type { AnalysisRequest, AnalysisRun } from '../types/analysis';
+import type { AnalysisRequest, AnalysisRun, AnalysisRunHistoryResponse } from '../types/analysis';
 
 function path(businessId: string) {
   return `/api/businesses/${encodeURIComponent(businessId)}/analysis-runs`;
@@ -19,4 +19,8 @@ export async function latestAnalysis(businessId: string) {
 
 export async function readAnalysis(businessId: string, runId: string) {
   return readJson<AnalysisRun>(await apiFetch(`${path(businessId)}/${encodeURIComponent(runId)}`));
+}
+
+export async function listAnalysisHistory(businessId: string, page = 0) {
+  return readJson<AnalysisRunHistoryResponse>(await apiFetch(`${path(businessId)}?page=${page}`));
 }

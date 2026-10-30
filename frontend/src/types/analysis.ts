@@ -53,3 +53,19 @@ export interface AnalysisRequest {
   useMeta: boolean;
   segmentSign: boolean;
 }
+
+export interface AnalysisRunHistoryItem {
+  id: string;
+  status: AnalysisRun['status'];
+  goal: string;
+  createdAt: string;
+  completedAt: string | null;
+  reportId: string | null;
+  useMeta: boolean;
+}
+
+export interface AnalysisRunHistoryResponse {
+  items: AnalysisRunHistoryItem[];
+  page: number;
+  hasMore: boolean;
+}

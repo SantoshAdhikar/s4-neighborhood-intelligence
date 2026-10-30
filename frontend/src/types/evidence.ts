@@ -1,6 +1,6 @@
 export interface EvidenceSource {
   id: string;
-  kind: 'OWNER_PROFILE' | 'STORE_FRONT_IMAGE' | 'SAM_SEGMENTATION' | 'OSM_PLACE';
+  kind: 'OWNER_PROFILE' | 'OWNER_FEEDBACK' | 'STORE_FRONT_IMAGE' | 'SAM_SEGMENTATION' | 'OSM_PLACE' | 'WEBSITE_PAGE' | 'OWNER_WEBSITE' | 'NEARBY_COMPETITOR';
   description: string;
   sourceUrl: string;
   observedAt: string | null;
@@ -24,6 +24,16 @@ export interface DayAction {
   measurement: string;
 }
 
+export interface EvidenceCoverage {
+  rank: number;
+  level: 'OBSERVED' | 'CONTEXT' | 'OWNER_ONLY';
+  label: string;
+  explanation: string;
+  observedSources: number;
+  contextualSources: number;
+  ownerSources: number;
+}
+
 export interface EvidenceReport {
   id: string;
   businessId: string;
@@ -32,6 +42,7 @@ export interface EvidenceReport {
   modelResponseId: string | null;
   sources: EvidenceSource[];
   opportunities: Opportunity[];
+  evidenceCoverage?: EvidenceCoverage[];
   plan: DayAction[];
   limitations: string[];
   lastError: string | null;

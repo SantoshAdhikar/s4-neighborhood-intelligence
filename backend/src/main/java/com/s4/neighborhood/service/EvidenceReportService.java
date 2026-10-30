@@ -142,6 +142,7 @@ public class EvidenceReportService {
                 saved == null ? List.of() : saved.opportunities(),
                 saved == null ? List.of() : saved.plan(),
                 saved == null ? List.of() : saved.limitations(),
+                saved == null ? List.of() : EvidenceCoverageAssessor.assess(saved.opportunities(), saved.sources()),
                 report.getLastError(), report.getCreatedAt(), report.getCompletedAt());
     }
 

@@ -2,6 +2,7 @@ package com.s4.neighborhood.controller;
 
 import com.s4.neighborhood.dto.AnalysisRunRequest;
 import com.s4.neighborhood.dto.AnalysisRunResponse;
+import com.s4.neighborhood.dto.AnalysisRunHistoryResponse;
 import com.s4.neighborhood.security.BusinessAccessGuard;
 import com.s4.neighborhood.service.AnalysisRunService;
 import jakarta.validation.Valid;
@@ -24,6 +25,12 @@ public class AnalysisRunController {
                                                      @Valid @RequestBody AnalysisRunRequest request) {
         access.requireOwner(businessId);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(runs.start(businessId, request));
+    }
+    @GetMapping
+    public AnalysisRunHistoryResponse history(@PathVariable UUID businessId,
+                                              @RequestParam(defaultValue = "0") int page) {
+        access.requireOwner(businessId);
+        return runs.history(businessId, page);
     }
     @GetMapping("/latest")
     public ResponseEntity<AnalysisRunResponse> latest(@PathVariable UUID businessId) {

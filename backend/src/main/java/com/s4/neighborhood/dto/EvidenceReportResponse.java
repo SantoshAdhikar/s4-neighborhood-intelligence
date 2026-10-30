@@ -14,6 +14,7 @@ public record EvidenceReportResponse(
         List<Opportunity> opportunities,
         List<DayAction> plan,
         List<String> limitations,
+        List<EvidenceCoverage> evidenceCoverage,
         String lastError,
         Instant createdAt,
         Instant completedAt
@@ -22,5 +23,7 @@ public record EvidenceReportResponse(
     public record Opportunity(int rank, String title, String rationale, List<String> evidenceIds,
                               String uncertainty, String effort, String measurement) {}
     public record DayAction(int day, String task, String purpose, List<String> evidenceIds, String measurement) {}
+    public record EvidenceCoverage(int rank, String level, String label, String explanation,
+                                   int observedSources, int contextualSources, int ownerSources) {}
     public record Draft(List<Opportunity> opportunities, List<DayAction> plan, List<String> limitations) {}
 }
