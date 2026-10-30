@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Cached Overture place extracts (refreshed locally; not source code)
+data/overture/
