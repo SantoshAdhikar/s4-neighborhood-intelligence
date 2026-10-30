@@ -20,12 +20,17 @@ public class AppUser {
     @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
 
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @PrePersist
     void onCreate() { createdAt = Instant.now(); }
 
+    public boolean isEmailVerified() { return emailVerified; }
+    public void setEmailVerified(boolean value) { emailVerified = value; }
     public UUID getId() { return id; }
     public String getEmail() { return email; }
     public void setEmail(String value) { email = value; }

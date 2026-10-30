@@ -13,6 +13,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.util.Locale;
 
@@ -39,9 +40,12 @@ public class ApiSecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(csrf -> csrf.spa())
+                .sessionManagement(session -> session
+                        .sessionFixation(fixation -> fixation.changeSessionId()))
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                        .requestMatchers("/error", "/api/auth/csrf", "/api/auth/register", "/api/auth/login").permitAll()
+                        .requestMatchers("/error", "/api/auth/csrf", "/api/auth/register", "/api/auth/login", "/api/auth/verify-email",
+                                "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
@@ -55,6 +59,7 @@ public class ApiSecurityConfig {
                         .logoutSuccessHandler((request, response, authentication) -> response.setStatus(HttpStatus.NO_CONTENT.value())))
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) -> response.sendError(HttpStatus.UNAUTHORIZED.value())))
+                .addFilterBefore(new AuthRateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(basic -> basic.disable())
                 .build();
     }

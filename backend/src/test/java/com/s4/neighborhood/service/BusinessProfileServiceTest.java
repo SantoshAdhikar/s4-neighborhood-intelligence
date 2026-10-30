@@ -5,6 +5,8 @@ import com.s4.neighborhood.dto.BusinessProfileRequest;
 import com.s4.neighborhood.entity.BusinessProfile;
 import com.s4.neighborhood.mapper.BusinessProfileMapper;
 import com.s4.neighborhood.repository.BusinessProfileRepository;
+import com.s4.neighborhood.repository.AppUserRepository;
+import com.s4.neighborhood.entity.AppUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +28,8 @@ class BusinessProfileServiceTest {
 
     @Mock
     private BusinessProfileRepository repository;
+    @Mock
+    private AppUserRepository users;
 
     @Spy
     private BusinessProfileMapper mapper = new BusinessProfileMapper();
@@ -53,14 +57,27 @@ class BusinessProfileServiceTest {
 
     @Test
     void createsBusinessWithValidRadius() {
+        UUID owner = UUID.randomUUID();
+        when(users.lockForWorkspaceCreation(owner)).thenReturn(Optional.of(new AppUser()));
         when(repository.saveAndFlush(any(BusinessProfile.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        var response = service.create(validRequest, UUID.randomUUID());
+        var response = service.create(validRequest, owner);
 
         assertEquals("Golden Brows", response.name());
         assertEquals(4, response.researchRadiusMiles());
         verify(repository).saveAndFlush(any(BusinessProfile.class));
+    }
+
+
+    @Test
+    void rejectsSecondWorkspaceForSameAccount() {
+        UUID owner = UUID.randomUUID();
+        when(users.lockForWorkspaceCreation(owner)).thenReturn(Optional.of(new AppUser()));
+        when(repository.existsByOwnerUserId(owner)).thenReturn(true);
+
+        assertThrows(WorkspaceAlreadyExistsException.class, () -> service.create(validRequest, owner));
+        verify(repository, never()).saveAndFlush(any(BusinessProfile.class));
     }
 
     @Test

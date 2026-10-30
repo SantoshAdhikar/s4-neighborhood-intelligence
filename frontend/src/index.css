@@ -222,3 +222,22 @@ button { cursor: pointer; }
   .form-panel { padding: 20px; border-radius: 15px; }
 }
 
+/* S4 full-screen intro */
+.s4-intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #f0f3fa;
+}
+
+.s4-intro-overlay canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+.s4-intro-overlay button {
+  cursor: pointer;
+}

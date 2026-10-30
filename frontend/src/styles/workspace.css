@@ -71,3 +71,16 @@
 .s4-card-actions .s4-primary-analysis-link{background:#152851;color:#fff;border-color:#152851;font-weight:750}.s4-card-actions .s4-primary-analysis-link:hover{background:#223c72;color:#fff}
 
 .s4-flow-nav .s4-flow-auto{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:.79rem;text-decoration:none;color:#244b91}
+
+/* V15: ownership review and email confirmation */
+.s4-claim-page { max-width: 820px; margin: 32px auto; padding: 16px; }
+.s4-claim-panel { background: white; border: 1px solid #e0e5ed; border-radius: 18px; padding: 28px; margin-top: 20px; }
+.s4-claim-panel h1 { font-size: 1.75rem; margin: 12px 0; }
+.s4-claim-panel h2 { font-size: 1.1rem; margin: 12px 0; }
+.s4-claim-panel p { line-height: 1.65; }
+.s4-claim-panel button { border: 0; padding: 12px 20px; border-radius: 8px; margin: 12px 0; background: #172a50; color: white; cursor: pointer; }
+.s4-claim-panel button:disabled { opacity: .55; cursor: wait; }
+.s4-claim-email { display: flex; align-items: center; gap: 12px; margin: 16px 0; }
+.s4-claim-warning { padding: 14px; background: #fff9e9; border: 1px solid #f0dfb4; border-radius: 10px; margin: 16px 0; }
+.s4-verify-email { display: flex; align-items: center; justify-content: center; padding: 30px; }
+.s4-verify-email .s4-auth-card { width: min(90vw, 540px); }

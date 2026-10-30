@@ -10,4 +10,5 @@ public interface BusinessProfileRepository
         extends JpaRepository<BusinessProfile, UUID> {
     List<BusinessProfile> findByOwnerUserIdOrderByCreatedAtDesc(UUID ownerUserId);
     boolean existsByIdAndOwnerUserId(UUID id, UUID ownerUserId);
+    boolean existsByOwnerUserId(UUID ownerUserId);
 }

@@ -14,6 +14,7 @@ import {
 import {
   createBusiness,
   getBusiness,
+  listBusinesses,
   updateBusiness,
 } from '../../services/businessApi';
 
@@ -42,6 +43,17 @@ export default function BusinessOnboarding() {
   const [saved, setSaved] = useState<BusinessProfile | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (businessId) return;
+    let active = true;
+    void listBusinesses().then(profiles => {
+      if (active && profiles.length) navigate(`/businesses/${profiles[0].id}/edit`, { replace: true });
+    }).catch((cause: unknown) => {
+      if (active) setError(cause instanceof Error ? cause.message : 'Could not check your workspace');
+    });
+    return () => { active = false; };
+  }, [businessId, navigate]);
 
   useEffect(() => {
     if (!businessId) return;
@@ -99,6 +111,7 @@ export default function BusinessOnboarding() {
         : await createBusiness(form);
 
       setSaved(result);
+      if (!saved) navigate(`/businesses/${result.id}/edit`, { replace: true });
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -108,13 +121,6 @@ export default function BusinessOnboarding() {
     } finally {
       setSaving(false);
     }
-  }
-
-  function startAnotherBusiness() {
-    setForm(initialForm);
-    setSaved(null);
-    setError('');
-    navigate('/businesses/new');
   }
 
   return (
@@ -422,15 +428,7 @@ export default function BusinessOnboarding() {
               </div>
             )}
 
-            {saved && (
-              <button
-    type="button"
-    onClick={startAnotherBusiness}
-    className="add-business-button"
-  >
-                Add another business
-              </button>
-            )}
+
           </form>
         </section>
       </div>

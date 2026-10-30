@@ -6,6 +6,7 @@ import com.s4.neighborhood.dto.BusinessProfileResponse;
 import com.s4.neighborhood.entity.BusinessProfile;
 import com.s4.neighborhood.mapper.BusinessProfileMapper;
 import com.s4.neighborhood.repository.BusinessProfileRepository;
+import com.s4.neighborhood.repository.AppUserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,18 +19,27 @@ public class BusinessProfileService {
 
     private final BusinessProfileRepository repository;
     private final BusinessProfileMapper mapper;
+    private final AppUserRepository users;
 
     public BusinessProfileService(
             BusinessProfileRepository repository,
-            BusinessProfileMapper mapper
+            BusinessProfileMapper mapper,
+            AppUserRepository users
     ) {
         this.repository = repository;
         this.mapper = mapper;
+        this.users = users;
     }
 
     @Transactional
     public BusinessProfileResponse create(BusinessProfileRequest request, UUID ownerId) {
         validateRadius(request.researchRadiusMiles());
+        // Lock the owning user so simultaneous requests cannot create two workspaces.
+        users.lockForWorkspaceCreation(ownerId)
+                .orElseThrow(() -> new NoSuchElementException("Account not found"));
+        if (repository.existsByOwnerUserId(ownerId)) {
+            throw new WorkspaceAlreadyExistsException();
+        }
 
         BusinessProfile business = new BusinessProfile();
         business.setOwnerUserId(ownerId);

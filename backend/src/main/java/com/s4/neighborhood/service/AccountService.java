@@ -66,6 +66,6 @@ public class AccountService {
     }
 
     private static AccountResponse toResponse(AppUser user) {
-        return new AccountResponse(user.getId(), user.getEmail(), user.getDisplayName());
+        return new AccountResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.isEmailVerified());
     }
 }
