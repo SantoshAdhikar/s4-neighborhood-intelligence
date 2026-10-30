@@ -25,6 +25,8 @@ public record NeighborhoodResponse(
             double longitude,
             double distanceMiles,
             String website,
-            String sourceUrl
+            String sourceUrl,
+            String matchLevel,
+            String matchReason
     ) {}
 }

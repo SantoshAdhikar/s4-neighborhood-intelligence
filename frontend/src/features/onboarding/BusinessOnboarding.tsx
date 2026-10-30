@@ -73,7 +73,7 @@ export default function BusinessOnboarding() {
     if (name === 'researchRadiusMiles') {
       setForm((current) => ({
         ...current,
-        researchRadiusMiles: Number(value) as 4 | 10,
+        researchRadiusMiles: Number(value) as 2 | 3 | 4 | 10,
       }));
     } else {
       setForm((current) => ({
@@ -221,7 +221,14 @@ export default function BusinessOnboarding() {
                 </option>
                 <option value="Automotive">Automotive</option>
                 <option value="Home Services">Home Services</option>
-                <option value="Other">Other</option>
+                <option value="Pet Services">Pet Services</option>
+                <option value="Education & Tutoring">Education & Tutoring</option>
+                <option value="Technology & Repair">Technology & Repair</option>
+                <option value="Hospitality & Lodging">Hospitality & Lodging</option>
+                <option value="Cleaning & Laundry">Cleaning & Laundry</option>
+                <option value="Events & Photography">Events & Photography</option>
+                <option value="Childcare">Childcare</option>
+                <option value="Other">Other / Another Local Business</option>
               </select>
             </div>
 
@@ -334,7 +341,7 @@ export default function BusinessOnboarding() {
               </p>
 
               <div className="radius-options">
-                {([4, 10] as const).map((radius) => (
+                {([2, 3, 4, 10] as const).map((radius) => (
                   <label
                     key={radius}
                     className={`radius-option ${
@@ -356,9 +363,8 @@ export default function BusinessOnboarding() {
                     <strong>{radius} miles</strong>
 
                     <span>
-                      {radius === 4
-                        ? 'Immediate neighborhood'
-                        : 'Wider local market'}
+                      {radius === 2 ? 'Closest competitors' : radius === 3 ? 'Local neighborhood'
+                        : radius === 4 ? 'Recommended area' : 'Wider local market'}
                     </span>
                   </label>
                 ))}

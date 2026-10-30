@@ -21,7 +21,7 @@ class CompetitorSelectionServiceTest {
         }
         var matches = CompetitorSelectionService.select(business, places);
         assertEquals(50, matches.size());
-        assertTrue(matches.stream().allMatch(item -> item.matchLevel().equals("SAME_INDUSTRY")));
+        assertTrue(matches.stream().allMatch(item -> item.matchLevel().equals("DIRECT_SPECIALTY")));
         assertTrue(matches.stream().noneMatch(item -> item.place().getName().contains("Grocery")));
         assertTrue(matches.stream().noneMatch(item -> item.place().getName().equals("Hair Salon")));
     }
@@ -36,7 +36,37 @@ class CompetitorSelectionServiceTest {
                 place("Bike Repair", "shop: bicycle", 0.05)));
         assertEquals(2, matches.size());
         assertEquals("Brows Studio", matches.get(0).place().getName());
-        assertEquals("SAME_INDUSTRY", matches.get(0).matchLevel());
+        assertEquals("DIRECT_SPECIALTY", matches.get(0).matchLevel());
+        assertEquals("RELATED_INDUSTRY", matches.get(1).matchLevel());
+    }
+
+    @Test
+    void prioritizesThreadingSpecialistsOverCloserGeneralBeautyAndNailShops() {
+        var business = business("Beauty & Personal Care");
+        business.setServices("Eyebrow threading, brow lamination, keratin lash lift, waxing, facials");
+        var matches = CompetitorSelectionService.select(business, List.of(
+                place("Generic Beauty Salon", "shop: beauty", 0.08),
+                place("Nail Art Studio", "shop: beauty", 0.09),
+                place("Rara Threading", "shop: beauty", 1.9),
+                place("N Threading Salon", "shop: beauty", 2.0),
+                place("Rewa Threading", "shop: beauty", 1.7),
+                place("Hair Salon", "shop: hairdresser", 0.06)));
+        assertEquals(6, matches.size());
+        assertEquals(List.of("Rewa Threading", "Rara Threading", "N Threading Salon"),
+                matches.subList(0, 3).stream().map(c -> c.place().getName()).toList());
+        assertTrue(matches.subList(0, 3).stream().allMatch(c -> "DIRECT_SPECIALTY".equals(c.matchLevel())));
+        assertEquals("POTENTIAL_OVERLAP", matches.get(3).matchLevel());
+    }
+
+    @Test
+    void focusCanChooseLashesInsteadOfThreadingForOneAnalysis() {
+        var business = business("Beauty & Personal Care");
+        business.setServices("Threading, brows, lashes");
+        var matches = CompetitorSelectionService.select(business, List.of(
+                place("Rara Threading", "shop: beauty", 0.3),
+                place("Lash Loft", "shop: beauty", 1.8)), "lash lifts");
+        assertEquals("Lash Loft", matches.getFirst().place().getName());
+        assertEquals("DIRECT_SPECIALTY", matches.getFirst().matchLevel());
         assertEquals("RELATED_INDUSTRY", matches.get(1).matchLevel());
     }
 
@@ -61,8 +91,8 @@ class CompetitorSelectionServiceTest {
                 place("Spice Store C", "shop: spices", 0.1),
                 place("Fashion Shop D", "shop: clothes", 0.2)));
         assertEquals(3, matches.size());
-        assertEquals("SAME_INDUSTRY", matches.get(0).matchLevel());
-        assertEquals("SAME_INDUSTRY", matches.get(1).matchLevel());
+        assertEquals("DIRECT_SPECIALTY", matches.get(0).matchLevel());
+        assertEquals("DIRECT_SPECIALTY", matches.get(1).matchLevel());
         assertEquals("RELATED_INDUSTRY", matches.get(2).matchLevel());
         assertTrue(matches.stream().noneMatch(candidate -> candidate.place().getName().contains("Fashion")));
     }

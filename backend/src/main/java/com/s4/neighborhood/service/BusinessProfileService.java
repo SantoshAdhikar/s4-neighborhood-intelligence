@@ -70,9 +70,9 @@ public class BusinessProfileService {
     }
 
     private void validateRadius(Integer radius) {
-        if (radius == null || (radius != 4 && radius != 10)) {
+        if (radius == null || (radius != 2 && radius != 3 && radius != 4 && radius != 10)) {
             throw new IllegalArgumentException(
-                    "Research radius must be 4 or 10 miles"
+                    "Research radius must be 2, 3, 4, or 10 miles"
             );
         }
     }

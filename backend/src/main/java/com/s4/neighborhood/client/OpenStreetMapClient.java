@@ -183,9 +183,38 @@ public class OpenStreetMapClient {
                     "nwr" + point
                             + "[\"office\"~\"^(lawyer|accountant|insurance|estate_agent)$\"];";
 
-            default ->
+            case "pet services" ->
                     "nwr" + point
-                            + "[\"shop\"~\"^(convenience|clothes|beauty|hairdresser|bakery|florist|hardware|supermarket)$\"];";
+                            + "[\"shop\"~\"^(pet|pet_grooming)$\"];"
+                            + "nwr" + point + "[\"amenity\"=\"veterinary\"];";
+
+            case "education & tutoring" ->
+                    "nwr" + point
+                            + "[\"amenity\"~\"^(school|driving_school|language_school|music_school)$\"];"
+                            + "nwr" + point + "[\"office\"=\"educational_institution\"];";
+
+            case "technology & repair" ->
+                    "nwr" + point
+                            + "[\"shop\"~\"^(computer|mobile_phone|electronics|electrical|repair)$\"];"
+                            + "nwr" + point + "[\"craft\"=\"electronics_repair\"];";
+
+            case "hospitality & lodging" ->
+                    "nwr" + point + "[\"tourism\"~\"^(hotel|motel|hostel|guest_house)$\"];";
+
+            case "cleaning & laundry" ->
+                    "nwr" + point + "[\"shop\"~\"^(laundry|dry_cleaning)$\"];";
+
+            case "events & photography" ->
+                    "nwr" + point + "[\"craft\"=\"photographer\"];"
+                            + "nwr" + point + "[\"office\"=\"event_planner\"];";
+
+            case "childcare" ->
+                    "nwr" + point + "[\"amenity\"~\"^(kindergarten|childcare)$\"];";
+
+            default ->
+                    "nwr" + point + "[\"shop\"~\"^(convenience|clothes|beauty|hairdresser|bakery|florist|hardware|supermarket|laundry|pet)$\"];"
+                            + "nwr" + point + "[\"craft\"~\"^(photographer|plumber|electrician|carpenter)$\"];"
+                            + "nwr" + point + "[\"office\"~\"^(lawyer|accountant|estate_agent)$\"];";
         };
 
         String query = "[out:json][timeout:25];("
@@ -290,14 +319,18 @@ public class OpenStreetMapClient {
     }
 
     private static String category(Map<?, ?> tags) {
-        for (String key : List.of("shop", "amenity", "office", "craft", "leisure")) {
+        for (String key : List.of("shop", "amenity", "office", "craft", "leisure", "tourism")) {
             String type = value(tags.get(key));
-
-            if (!type.isBlank()) {
-                return key + ": " + type.replace('_', ' ');
+            if (type.isBlank()) continue;
+            StringBuilder result = new StringBuilder(key + ": " + type.replace('_', ' '));
+            // Retain contributed service signals where present. These are listing claims,
+            // not independently verified offerings.
+            for (String detail : List.of("beauty", "cuisine", "service")) {
+                String v = value(tags.get(detail));
+                if (!v.isBlank()) result.append("; ").append(detail).append(": ").append(v.replace('_', ' '));
             }
+            return result.substring(0, Math.min(result.length(), 150));
         }
-
         return "Local business";
     }
 

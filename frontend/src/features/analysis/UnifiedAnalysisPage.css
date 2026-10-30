@@ -60,3 +60,10 @@
 .s4-unified-expand{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:18px 0 8px;font-size:.82rem;color:#64748b}
 .s4-unified-expand button{border:1px solid #cbd7e7;border-radius:9px;padding:9px 14px;background:#fff;color:#172a52;font:inherit;font-weight:700;cursor:pointer}
 .s4-unified-expand button:hover{background:#f3f6fb}
+
+.s4-unified-site-pages{border-top:1px solid #e1e8f1;margin-top:14px;padding-top:12px}
+.s4-unified-site-pages summary{font-weight:700;cursor:pointer;color:#203e6d;font-size:.82rem}
+.s4-unified-site-page{border-top:1px solid #e9eef5;padding:11px 0;overflow-wrap:anywhere}
+.s4-unified-site-page strong{text-transform:capitalize;color:#28517f}
+.s4-unified-site-page p{font-size:.78rem;margin:7px 0}
+.s4-unified-site-page a{display:inline-block;margin-top:5px}

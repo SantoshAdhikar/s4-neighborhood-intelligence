@@ -8,6 +8,7 @@ import com.s4.neighborhood.entity.WebsiteFinding;
 import com.s4.neighborhood.repository.AnalysisRunRepository;
 import com.s4.neighborhood.repository.BusinessProfileRepository;
 import com.s4.neighborhood.repository.WebsiteFindingRepository;
+import com.s4.neighborhood.repository.WebsitePageFindingRepository;
 import org.springframework.context.event.EventListener;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -29,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 public class AnalysisRunService {
     private final AnalysisRunRepository runs;
     private final WebsiteFindingRepository websites;
+    private final WebsitePageFindingRepository pages;
     private final BusinessProfileRepository businesses;
     private final StorefrontMediaService media;
     private final NeighborhoodResearchService neighborhood;
@@ -39,11 +41,13 @@ public class AnalysisRunService {
             new ArrayBlockingQueue<>(4), new ThreadPoolExecutor.AbortPolicy());
 
     public AnalysisRunService(AnalysisRunRepository runs, WebsiteFindingRepository websites,
+                              WebsitePageFindingRepository pages,
                               BusinessProfileRepository businesses, StorefrontMediaService media,
                               NeighborhoodResearchService neighborhood, WebsiteResearchService websiteResearch,
                               StorefrontSegmentationService segmentation, EvidenceReportService reports) {
         this.runs = runs;
         this.websites = websites;
+        this.pages = pages;
         this.businesses = businesses;
         this.media = media;
         this.neighborhood = neighborhood;
@@ -78,6 +82,9 @@ public class AnalysisRunService {
         AnalysisRun run = new AnalysisRun();
         run.setBusinessId(businessId);
         run.setGoal(goal);
+        String focus = request.focusServices() == null || request.focusServices().isBlank()
+                ? business.getServices() : request.focusServices().strip();
+        run.setFocusServices(focus == null ? "" : focus.substring(0, Math.min(500, focus.length())));
         run.setWebsite(url);
         run.setCustomerFeedback(request.customerFeedback() == null ? "" : request.customerFeedback().strip());
         run.setMediaId(mediaId);
@@ -221,12 +228,16 @@ public class AnalysisRunService {
 
     private AnalysisRunResponse response(AnalysisRun run) {
         var findings = websites.findByRunIdOrderByFetchedAtAsc(run.getId()).stream()
-                .map(f -> new AnalysisRunResponse.WebsiteRecord(f.getKind(), f.getBusinessName(), f.getUrl(),
+                .map(f -> new AnalysisRunResponse.WebsiteRecord(f.getId(), f.getKind(), f.getBusinessName(), f.getUrl(),
                         f.getTitle(), f.getObservedSummary(), f.getStatus(), f.getNote(), f.getFetchedAt(),
                         f.getOsmSourceUrl(), f.getCategory(), f.getDistanceMiles(), f.getMatchLevel()))
                 .toList();
+        var details = pages.findByRunIdOrderByFetchedAtAsc(run.getId()).stream()
+                .map(page -> new AnalysisRunResponse.PageRecord(page.getWebsiteFindingId(), page.getPageType(),
+                        page.getPageUrl(), page.getPageTitle(), page.getStatus(),
+                        page.getObservedSummary(), page.getNote(), page.getFetchedAt())).toList();
         return new AnalysisRunResponse(run.getId(), run.getStatus(), run.getStep(), run.getDetail(),
-                run.getGoal(), run.getWebsite(), run.getMediaId(), run.getReportId(), run.isUseMeta(), run.isSegmentSign(),
-                run.getLastError(), run.getCreatedAt(), run.getCompletedAt(), findings);
+                run.getGoal(), run.getWebsite(), run.getFocusServices(), run.getMediaId(), run.getReportId(), run.isUseMeta(), run.isSegmentSign(),
+                run.getLastError(), run.getCreatedAt(), run.getCompletedAt(), findings, details);
     }
 }

@@ -75,6 +75,7 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
   const [media, setMedia] = useState<StorefrontMedia[]>([]);
   const [goal, setGoal] = useState('');
+  const [focusServices, setFocusServices] = useState('');
   const goalFieldRef = useRef<HTMLTextAreaElement>(null);
   const [website, setWebsite] = useState('');
   const [customerFeedback, setCustomerFeedback] = useState('');
@@ -117,6 +118,7 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
           : null;
         if (!active) return;
         setBusiness(profile);setMedia(images);setGoal(profile.primaryGoal);setWebsite(profile.website ?? '');
+        setFocusServices((profile.services ?? '').slice(0, 500));
         setMediaId(images.find(item => item.status === 'ANALYZED')?.id ?? '');
         setRun(previous);setReport(linkedReport?.status === 'COMPLETED' ? linkedReport : savedReport?.status === 'COMPLETED' ? savedReport : null);
       }).catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Could not load business'); })
@@ -158,7 +160,7 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
         setPhoto(null);
       }
       const result = await startAnalysis(businessId, {
-        goal: goal.trim(), website: website.trim(), customerFeedback: customerFeedback.trim(),
+        goal: goal.trim(), focusServices: focusServices.trim(), website: website.trim(), customerFeedback: customerFeedback.trim(),
         mediaId: selectedId, useMeta, segmentSign: useMeta && segmentSign,
       });
       setRun(result);
@@ -170,7 +172,9 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
   const running = submitting || run?.status === 'QUEUED' || run?.status === 'RUNNING';
   const competitors = run?.websites.filter(site => site.kind === 'NEARBY_COMPETITOR') ?? [];
   const legacyResearch = run?.websites.some(site => site.kind === 'NEARBY_WEBSITE') && competitors.length === 0;
-  const sameIndustryCount = competitors.filter(site => site.matchLevel === 'SAME_INDUSTRY').length;
+  const specialtyCount = competitors.filter(site => site.matchLevel === 'DIRECT_SPECIALTY').length;
+  const possibleCount = competitors.filter(site => site.matchLevel === 'POTENTIAL_OVERLAP' || site.matchLevel === 'SAME_INDUSTRY').length;
+  const relatedCount = competitors.filter(site => site.matchLevel === 'RELATED_INDUSTRY').length;
   const fetchedCount = competitors.filter(site => site.status === 'FETCHED').length;
   const visibleWebsites = [
     ...(run?.websites.filter(site => site.kind !== 'NEARBY_COMPETITOR') ?? []),
@@ -189,10 +193,16 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
       <label htmlFor="s4-unified-goal">What is your main business goal?</label>
       <textarea ref={goalFieldRef} id="s4-unified-goal" rows={5} maxLength={5000} required value={goal} onChange={event => setGoal(event.target.value)} placeholder="For example, improve appointments for our lash lift service" />
         <small className="s4-unified-goal-count">{goal.length.toLocaleString()} / 5,000 characters</small>
+      <p className="s4-unified-source-note">Industry: {business?.industry ?? 'Not selected'} · Search area: {business?.researchRadiusMiles ?? 4} miles. S4 uses these settings in automatic research and the manual Neighborhood Explorer. You can adjust them in Business Settings.</p>
+      <label htmlFor="s4-unified-focus">Which services should S4 focus on when finding competitors?</label>
+      <textarea id="s4-unified-focus" rows={2} maxLength={500} value={focusServices}
+        onChange={event => setFocusServices(event.target.value)}
+        placeholder="Example: haircuts and coloring; Indian cuisine; nail services; brake repair" />
+      <small>Pre-filled from your business profile. Edit this for each analysis. S4 ranks specialty-name matches first; these remain unverified until supported by published service evidence.</small>
       <div className="s4-unified-two">
         <div><label htmlFor="s4-unified-website">Your business website (optional)</label>
           <input id="s4-unified-website" type="url" placeholder="https://example.com" value={website} onChange={event => setWebsite(event.target.value)} />
-          <small>Free homepage research; sites may block automated access.</small></div>
+          <small>Free homepage and selected internal-page research; sites may block automated access.</small></div>
         <div><label htmlFor="s4-unified-media">New storefront photo (optional)</label>
           <input id="s4-unified-media" type="file" accept="image/png,image/jpeg,video/mp4" onChange={event => setPhoto(event.target.files?.[0] ?? null)} />
           <small>Saved with this submission. Enable Meta below to inspect the photo automatically; otherwise it is stored without visual analysis.</small></div>
@@ -206,7 +216,7 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
       <textarea id="s4-unified-feedback" rows={3} maxLength={1500} value={customerFeedback} onChange={event => setCustomerFeedback(event.target.value)} placeholder="Summarize customer requests or feedback without names or personal information" />
       <small>We won't scrape Google reviews. Owner-provided feedback is labeled unverified, not a representative review sample.</small>
       <div className="s4-unified-cost">
-        <div><strong>Free-only research and local AI</strong><p>Up to 50 nearby same-industry or clearly labeled related business candidates from OSM, with up to 12 competitor homepages checked per run. Candidate listings are not proof of direct competition, and website access may be unavailable. Neighborhood data, accessible website summaries, and a local Ollama action report when qwen2.5:7b is running. No Meta requests. A newly uploaded photo is saved locally but not visually analyzed in free-only mode; saved Muse findings can still be reused.</p></div>
+        <div><strong>Free-only research and local AI</strong><p>Up to 50 nearby same-industry or clearly labeled related business candidates from OpenStreetMap plus optional Overture Maps enrichment, with up to 12 competitor homepages and a bounded sample of service, booking, pricing and contact pages checked per run. Candidate listings are not proof of direct competition, and website access may be unavailable. Neighborhood data, accessible website summaries, and a local Ollama action report when qwen2.5:7b is running. No Meta requests. A newly uploaded photo is saved locally but not visually analyzed in free-only mode; saved Muse findings can still be reused.</p></div>
         <label className="s4-unified-toggle"><input type="checkbox" checked={useMeta} onChange={event => setUseMeta(event.target.checked)} /><span><Coins size={17}/> Automatically inspect the selected photo and generate the report with Meta (uses promotional credits)</span></label>
         {useMeta && <label className="s4-unified-toggle"><input type="checkbox" checked={segmentSign} onChange={event => setSegmentSign(event.target.checked)}/><span>Also run SAM 3.1 sign segmentation if needed (additional credit usage)</span></label>}
       </div>
@@ -218,16 +228,20 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
     {run && run.websites.length > 0 && <section className="s4-unified-websites">
       <div className="s4-unified-section-head"><div><p className="s4-kicker">FREE COMPETITOR & WEBSITE RESEARCH</p>
         <h2>Nearby industry comparison</h2>
-        <p>Target: up to 50 category-matched businesses within your saved search radius; at most 12 competitor homepages checked. No invented listings, ratings, reviews or sales estimates.</p></div></div>
+        <p>Target: up to 50 likely competitors, ranked by services first and distance second. Public website checks remain bounded; no invented services, ratings, reviews or sales.</p></div></div>
       <div className="s4-unified-coverage" role="status">
         <span><strong>{competitors.length}/50</strong> candidates found</span>
-        <span><strong>{sameIndustryCount}</strong> same-industry matches</span>
-        <span><strong>{competitors.length - sameIndustryCount}</strong> related-sector matches</span>
+        <span><strong>{specialtyCount}</strong> specialty-name/tag matches</span>
+        <span><strong>{possibleCount}</strong> possible service-overlap candidates</span>
+        <span><strong>{relatedCount}</strong> related-sector listings</span>
         <span><strong>{fetchedCount}</strong> competitor homepages inspected</span>
+        <span><strong>{competitors.filter(site => site.note?.includes('Overture Maps record')).length}</strong> Overture-enriched candidates</span>
+        <span><strong>{run.pages?.filter(page => page.status === 'FETCHED').length ?? 0}</strong> additional pages inspected</span>
       </div>
       {legacyResearch && <p className="s4-unified-shortfall">This is an older analysis that inspected up to 3 nearby websites. Start a new analysis to build the 50-business shortlist.</p>}
-      {!legacyResearch && competitors.length < 50 && <p className="s4-unified-shortfall">{run?.detail.includes('Neighborhood discovery was unavailable') ? 'Live neighborhood discovery was unavailable. This report cannot establish nearby competitors, but website and available evidence analysis can still complete.' : 'The latest OSM search identified fewer than 50 category-matched businesses. S4 will not invent listings or label unrelated shops as direct competitors. You can expand the radius in Business Settings if needed.'}</p>}
-      <p className="s4-unified-source-note">Matches use OSM categories and business names; exact service overlap is not independently verified. A missing website does not imply the business has no website.</p>
+      {!legacyResearch && competitors.length < 50 && <p className="s4-unified-shortfall">{run?.detail.includes('Neighborhood discovery was unavailable') ? 'Live neighborhood discovery was unavailable. This report cannot establish nearby competitors, but website and available evidence analysis can still complete.' : 'The available open-place datasets identified fewer than 50 category-matched businesses. S4 will not invent listings or label unrelated shops as direct competitors. You can expand the radius in Business Settings if needed.'}</p>}
+      <p className="s4-unified-source-note">Research focus: {run.focusServices || business?.services || 'General industry'}. Industry and service-focus candidates are ranked from business names and contributed categories, not independently confirmed service menus. Google review text is not automatically collected.</p>
+      <p className="s4-unified-source-note">Candidates come from OpenStreetMap and, when configured, Overture Maps. Verify business identity, service overlap and website ownership before using findings to make competitive claims.</p>
       {competitors.length > 12 && <div className="s4-unified-expand">
         <span>Showing {showAllCompetitors ? competitors.length : 12} of {competitors.length} nearby candidates (plus your website).</span>
         <button type="button" onClick={() => setShowAllCompetitors(current => !current)} aria-expanded={showAllCompetitors}>
@@ -235,16 +249,32 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
         </button>
       </div>}
       <div className="s4-unified-web-grid">{visibleWebsites.map((site,index) => <article key={`${site.url}-${index}-${site.businessName}`}>
-        <span>{site.kind === 'OWNER_WEBSITE' ? 'YOUR WEBSITE' : site.matchLevel === 'RELATED_INDUSTRY' ? 'RELATED SECTOR · NOT VERIFIED DIRECT COMPETITOR' : 'SAME INDUSTRY CANDIDATE'}</span>
+        <span>{site.kind === 'OWNER_WEBSITE' ? 'YOUR WEBSITE' : site.matchLevel === 'DIRECT_SPECIALTY' ? 'SPECIALTY SIGNAL · SERVICE NOT VERIFIED' : site.matchLevel === 'POTENTIAL_OVERLAP' ? 'POSSIBLE SERVICE OVERLAP' : site.matchLevel === 'RELATED_INDUSTRY' ? 'RELATED SECTOR · NOT VERIFIED DIRECT COMPETITOR' : 'SAME INDUSTRY CANDIDATE'}</span>
         <h3>{site.businessName}</h3>
-        {site.distanceMiles != null && <small>{site.distanceMiles.toFixed(2)} miles · {site.category ?? 'OSM category unavailable'}</small>}
-        <small>Website: {site.status === 'NO_WEBSITE' ? 'Not listed in OSM' : site.status === 'FETCHED' ? 'Homepage inspected' : site.status === 'BLOCKED' ? 'Access disallowed' : site.status === 'SKIPPED' ? 'Inspection skipped' : 'Unavailable'}</small>
+        {site.distanceMiles != null && <small>{site.distanceMiles.toFixed(2)} miles · {site.category ?? 'Business category unavailable'}</small>}
+        <small>Website: {site.status === 'NO_WEBSITE' ? 'Not present in the available source record' : site.status === 'FETCHED' ? 'Homepage inspected' : site.status === 'BLOCKED' ? 'Access disallowed' : site.status === 'SKIPPED' ? 'Inspection skipped' : 'Unavailable'}</small>
         {site.title && <p><strong>Page:</strong> {site.title}</p>}
         {site.observedSummary && <p>{site.observedSummary}</p>}
         {site.note && <small>{site.note}</small>}
+        {(() => {
+          const detailPages = run.pages?.filter(page => page.websiteFindingId === site.id) ?? [];
+          return detailPages.length > 0 && <details className="s4-unified-site-pages">
+            <summary>Website pages checked ({detailPages.filter(page => page.status === 'FETCHED').length}/{detailPages.length})</summary>
+            {detailPages.map(page => <div key={page.pageUrl} className="s4-unified-site-page">
+              <div><strong>{page.pageType.toLowerCase()}</strong> · {page.status.toLowerCase()}</div>
+              {page.pageTitle && <p>{page.pageTitle}</p>}
+              {page.observedSummary && <p>{page.observedSummary}</p>}
+              {page.note && <small>{page.note}</small>}
+              <a href={page.pageUrl} target="_blank" rel="noopener noreferrer">View checked page</a>
+            </div>)}
+          </details>;
+        })()}
         <div className="s4-unified-links">
           {site.status === 'FETCHED' && <a href={site.url} target="_blank" rel="noopener noreferrer">Open homepage</a>}
           {site.osmSourceUrl && <a href={site.osmSourceUrl} target="_blank" rel="noopener noreferrer">View OSM listing</a>}
+          {site.kind === 'NEARBY_COMPETITOR' && <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([site.businessName, business?.city, business?.state].filter(Boolean).join(', '))}`}
+            target="_blank" rel="noopener noreferrer">Check Google Maps manually</a>}
         </div>
       </article>)}</div>
     </section>}

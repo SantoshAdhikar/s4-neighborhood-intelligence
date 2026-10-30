@@ -6,6 +6,7 @@ import com.s4.neighborhood.entity.BusinessProfile;
 import com.s4.neighborhood.repository.AnalysisRunRepository;
 import com.s4.neighborhood.repository.BusinessProfileRepository;
 import com.s4.neighborhood.repository.WebsiteFindingRepository;
+import com.s4.neighborhood.repository.WebsitePageFindingRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.*;
 class AnalysisRunServiceTest {
     @Mock AnalysisRunRepository runs;
     @Mock WebsiteFindingRepository websites;
+    @Mock WebsitePageFindingRepository pages;
     @Mock BusinessProfileRepository businesses;
     @Mock StorefrontMediaService media;
     @Mock NeighborhoodResearchService neighborhood;

@@ -7,6 +7,7 @@ import com.s4.neighborhood.repository.NeighborhoodResearchRepository;
 import com.s4.neighborhood.repository.StorefrontMediaRepository;
 import com.s4.neighborhood.repository.StorefrontSegmentationRepository;
 import com.s4.neighborhood.repository.WebsiteFindingRepository;
+import com.s4.neighborhood.repository.WebsitePageFindingRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -30,6 +31,7 @@ class EvidenceSourceServiceTest {
     @Mock StorefrontSegmentationRepository segmentations;
     @Mock AnalysisRunRepository analysisRuns;
     @Mock WebsiteFindingRepository websiteFindings;
+    @Mock WebsitePageFindingRepository pageFindings;
     @Mock JsonMapper json;
     @InjectMocks EvidenceSourceService service;
 

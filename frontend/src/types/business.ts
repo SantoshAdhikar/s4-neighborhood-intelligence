@@ -9,7 +9,7 @@ export interface BusinessProfileRequest {
   website: string;
   services: string;
   primaryGoal: string;
-  researchRadiusMiles: 4 | 10;
+  researchRadiusMiles: 2 | 3 | 4 | 10;
 }
 
 export interface BusinessProfile extends BusinessProfileRequest {

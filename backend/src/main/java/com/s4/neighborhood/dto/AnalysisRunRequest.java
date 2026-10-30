@@ -6,6 +6,7 @@ import java.util.UUID;
 public record AnalysisRunRequest(
         @Size(max = 5000) String goal,
         @Size(max = 500) String website,
+        @Size(max = 500) String focusServices,
         @Size(max = 1500) String customerFeedback,
         UUID mediaId,
         boolean useMeta,

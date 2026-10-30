@@ -150,20 +150,31 @@ public class NeighborhoodResearchService {
             NeighborhoodResearch research,
             boolean cached
     ) {
-        var found = places
-                .findByResearchIdOrderByDistanceMilesAsc(research.getId())
-                .stream()
-                .map(place -> new NeighborhoodResponse.NearbyBusinessResponse(
-                        place.getOsmType(),
-                        place.getOsmId(),
-                        place.getName(),
-                        place.getCategory(),
-                        place.getLatitude(),
-                        place.getLongitude(),
-                        place.getDistanceMiles(),
-                        place.getWebsite(),
-                        place.getSourceUrl()))
-                .toList();
+        var savedPlaces = places.findByResearchIdOrderByDistanceMilesAsc(research.getId());
+        var relevant = CompetitorSelectionService.selectAll(business, savedPlaces);
+        java.util.Map<String, CompetitorSelectionService.Candidate> classified = new java.util.HashMap<>();
+        for (var candidate : relevant) classified.put(candidate.place().getSourceUrl(), candidate);
+        var found = savedPlaces.stream()
+                .sorted(java.util.Comparator
+                        .comparingInt((NearbyPlace place) -> {
+                            var candidate = classified.get(place.getSourceUrl());
+                            if (candidate == null) return 4;
+                            return switch (candidate.matchLevel()) {
+                                case "DIRECT_SPECIALTY" -> 0;
+                                case "SAME_INDUSTRY" -> 1;
+                                case "POTENTIAL_OVERLAP" -> 2;
+                                default -> 3;
+                            };
+                        }).thenComparingDouble(NearbyPlace::getDistanceMiles))
+                .map(place -> {
+                    var match = classified.get(place.getSourceUrl());
+                    return new NeighborhoodResponse.NearbyBusinessResponse(
+                            place.getOsmType(), place.getOsmId(), place.getName(),
+                            place.getCategory(), place.getLatitude(), place.getLongitude(),
+                            place.getDistanceMiles(), place.getWebsite(), place.getSourceUrl(),
+                            match == null ? null : match.matchLevel(),
+                            match == null ? null : match.reason());
+                }).toList();
 
         return new NeighborhoodResponse(
                 business.getId(),

@@ -12,6 +12,7 @@ import com.s4.neighborhood.repository.StorefrontMediaRepository;
 import com.s4.neighborhood.repository.StorefrontSegmentationRepository;
 import com.s4.neighborhood.repository.AnalysisRunRepository;
 import com.s4.neighborhood.repository.WebsiteFindingRepository;
+import com.s4.neighborhood.repository.WebsitePageFindingRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -33,11 +34,12 @@ public class EvidenceSourceService {
     private final JsonMapper json;
     private final AnalysisRunRepository analysisRuns;
     private final WebsiteFindingRepository websiteFindings;
+    private final WebsitePageFindingRepository pageFindings;
 
     public EvidenceSourceService(NeighborhoodResearchRepository researches, NearbyPlaceRepository places,
                                  StorefrontMediaRepository media, StorefrontSegmentationRepository segmentations,
                                  AnalysisRunRepository analysisRuns, WebsiteFindingRepository websiteFindings,
-                                 JsonMapper json) {
+                                 WebsitePageFindingRepository pageFindings, JsonMapper json) {
         this.researches = researches;
         this.places = places;
         this.media = media;
@@ -45,6 +47,7 @@ public class EvidenceSourceService {
         this.json = json;
         this.analysisRuns = analysisRuns;
         this.websiteFindings = websiteFindings;
+        this.pageFindings = pageFindings;
     }
 
     public EvidenceBundle collect(BusinessProfile business) {
@@ -126,7 +129,15 @@ public class EvidenceSourceService {
                 limitations.add("No nearby businesses were found in the saved OpenStreetMap research. Competitor coverage is unavailable, not evidence that none exist.");
             }
             List<NearbyPlace> ranked = new ArrayList<>();
-            nearby.stream().filter(place -> shortlisted.contains(place.getSourceUrl())).forEach(ranked::add);
+            // Preserve specialty-first shortlist order in the AI source sample.
+            List<String> shortlistOrder = latestRun.map(run -> websiteFindings
+                    .findByRunIdOrderByFetchedAtAsc(run.getId()).stream()
+                    .map(finding -> finding.getOsmSourceUrl())
+                    .filter(url -> url != null && !url.isBlank())
+                    .toList()).orElse(List.of());
+            for (String url : shortlistOrder) {
+                nearby.stream().filter(place -> url.equals(place.getSourceUrl())).forEach(ranked::add);
+            }
             nearby.stream().filter(place -> !shortlisted.contains(place.getSourceUrl())).forEach(ranked::add);
             for (NearbyPlace place : ranked.stream().limit(24).toList()) {
                 sources.add(new Source("osm-" + place.getOsmType() + "-" + place.getOsmId(), "OSM_PLACE",
@@ -156,6 +167,12 @@ public class EvidenceSourceService {
             limitations.add("No neighborhood snapshot is available for this business address and search radius. Nearby competitor claims cannot be verified; the report uses only other available evidence.");
         }
         analysisRuns.findTopByBusinessIdOrderByCreatedAtDesc(business.getId()).ifPresent(run -> {
+            if (run.getFocusServices() != null && !run.getFocusServices().isBlank()) {
+                sources.add(new Source("research-focus", "OWNER_PROFILE",
+                        "Owner-selected competitor research focus: " + limited(run.getFocusServices(), 500)
+                                + ". Name/category matches are candidate signals, not confirmed services.",
+                        "/businesses/" + business.getId() + "/analyze", run.getCreatedAt()));
+            }
             if (run.getCustomerFeedback() != null && !run.getCustomerFeedback().isBlank()) {
                 sources.add(new Source("feedback-" + stableId(run.getCustomerFeedback()), "OWNER_FEEDBACK",
                         "Owner-supplied customer feedback notes (not independently verified): "
@@ -178,6 +195,32 @@ public class EvidenceSourceService {
                     websitesNotInspected++;
                 }
             }
+            var inspectedPages = pageFindings.findByRunIdOrderByFetchedAtAsc(run.getId());
+            int capturedPages = 0;
+            int unavailablePages = 0;
+            for (var page : inspectedPages) {
+                if (!"FETCHED".equals(page.getStatus())) {
+                    unavailablePages++;
+                    continue;
+                }
+                if (capturedPages >= 12) continue;
+                capturedPages++;
+                sources.add(new Source("page-" + page.getId(), "WEBSITE_PAGE",
+                        "Observed " + limited(page.getPageType(), 25) + " page "
+                                + limited(page.getPageTitle(), 90) + ": "
+                                + limited(page.getObservedSummary(), 660),
+                        page.getPageUrl(), page.getFetchedAt()));
+            }
+            if (capturedPages > 0) {
+                limitations.add("Detailed website research sampled " + capturedPages
+                        + " accessible internal pages; it does not establish complete service coverage, booking usability, prices, or customer experience.");
+            }
+            if (inspectedPages.stream().filter(page -> "FETCHED".equals(page.getStatus())).count() > 12) {
+                limitations.add("Some page inspections are displayed in the research view but excluded from the AI source catalog to limit prompt size.");
+            }
+            if (unavailablePages > 0) {
+                limitations.add(unavailablePages + " internal website pages were blocked or unavailable; absence of information is not evidence a feature is missing.");
+            }
             if (websitesNotListed > 0) {
                 limitations.add(websitesNotListed + " shortlisted businesses have no website recorded in OSM; this does not prove they lack websites.");
             }
@@ -185,7 +228,7 @@ public class EvidenceSourceService {
                 limitations.add(websitesNotInspected + " website homepages were unavailable, disallowed or deferred; no business-quality conclusion follows from missing website evidence.");
             }
         });
-        limitations.add("A homepage inspection is not a full website audit; missing labels or links do not prove a service or feature is absent.");
+        limitations.add("Website inspection samples accessible pages and labels, not complete functionality; missing links or page text do not prove a service or feature is absent. A detected booking link means it was published, not that booking works.");
         limitations.add("OpenStreetMap listings do not establish a competitor's sales, prices, quality, customer traffic, or marketing performance.");
         limitations.add("Business goals and services are owner-provided, not externally verified.");
         limitations.add("SAM masks identify candidate regions; they do not independently verify the meaning of a sign.");

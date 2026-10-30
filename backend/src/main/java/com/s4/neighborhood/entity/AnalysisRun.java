@@ -21,6 +21,8 @@ public class AnalysisRun {
     private String goal;
     @Column(length = 500)
     private String website;
+    @Column(name = "focus_services", length = 500)
+    private String focusServices;
     @Column(name = "customer_feedback", length = 1500)
     private String customerFeedback;
     @Column(name = "media_id")
@@ -55,6 +57,8 @@ public class AnalysisRun {
     public void setGoal(String v) { goal=v; }
     public String getWebsite() { return website; }
     public void setWebsite(String v) { website=v; }
+    public String getFocusServices() { return focusServices; }
+    public void setFocusServices(String v) { focusServices=v; }
     public String getCustomerFeedback() { return customerFeedback; }
     public void setCustomerFeedback(String v) { customerFeedback=v; }
     public UUID getMediaId() { return mediaId; }

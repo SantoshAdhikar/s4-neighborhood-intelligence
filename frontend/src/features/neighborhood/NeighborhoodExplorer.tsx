@@ -27,6 +27,9 @@ export default function NeighborhoodExplorer({ businessId }: Props) {
   const [report, setReport] = useState<NeighborhoodReport | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [onlyRelevant, setOnlyRelevant] = useState(false);
+  const visiblePlaces = report?.places.filter(place => !onlyRelevant || place.matchLevel != null) ?? [];
+  const specialtyCount = report?.places.filter(place => place.matchLevel === 'DIRECT_SPECIALTY').length ?? 0;
 
   useEffect(() => {
     let active = true;
@@ -141,6 +144,15 @@ export default function NeighborhoodExplorer({ businessId }: Props) {
               </div>
             </div>
 
+            <div className="explorer-summary" style={{ marginTop: 12 }}>
+              <div><span>Potential specialty matches</span><strong>{specialtyCount}</strong></div>
+              <div><span>Ranked industry candidates</span><strong>{report.places.filter(place => place.matchLevel != null).length}</strong></div>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input type="checkbox" checked={onlyRelevant} onChange={event => setOnlyRelevant(event.target.checked)} />
+                Show likely competitors only
+              </label>
+            </div>
+
             <p className="explorer-address">
               Matched location: {report.matchedAddress}
             </p>
@@ -192,7 +204,7 @@ export default function NeighborhoodExplorer({ businessId }: Props) {
                     </Popup>
                   </CircleMarker>
 
-                  {report.places.map((place) => (
+                  {visiblePlaces.map((place) => (
                     <CircleMarker
                       key={`${place.osmType}-${place.osmId}`}
                       center={[place.latitude, place.longitude]}
@@ -200,7 +212,7 @@ export default function NeighborhoodExplorer({ businessId }: Props) {
                       pathOptions={{
                         color: '#fff',
                         weight: 1,
-                        fillColor: '#b58345',
+                        fillColor: place.matchLevel === 'DIRECT_SPECIALTY' ? '#256d70' : '#b58345',
                         fillOpacity: 0.95,
                       }}
                     >
@@ -208,6 +220,8 @@ export default function NeighborhoodExplorer({ businessId }: Props) {
                         <strong>{place.name}</strong>
                         <div>{place.category}</div>
                         <div>{place.distanceMiles.toFixed(2)} miles</div>
+                        {place.matchLevel && <div><strong>{place.matchLevel.replaceAll('_', ' ').toLowerCase()}</strong></div>}
+                        {place.matchReason && <div>{place.matchReason}</div>}
                         <a
                           href={place.sourceUrl}
                           target="_blank"
@@ -237,12 +251,14 @@ export default function NeighborhoodExplorer({ businessId }: Props) {
                   </p>
                 )}
 
-                {report.places.map((place) => (
+                {visiblePlaces.map((place) => (
                   <article
                     key={`${place.osmType}-${place.osmId}`}
                     className="explorer-place"
                   >
                     <strong>{place.name}</strong>
+                    {place.matchLevel && <p><b>{place.matchLevel.replaceAll('_', ' ').toLowerCase()}</b></p>}
+                    {place.matchReason && <p>{place.matchReason}</p>}
                     <p>
                       {place.category} · {place.distanceMiles.toFixed(2)} mi
                     </p>
@@ -271,8 +287,8 @@ export default function NeighborhoodExplorer({ businessId }: Props) {
 
             <p className="explorer-footnote">
               Retrieved {new Date(report.fetchedAt).toLocaleString()}.
-              At most 80 results are displayed from a limited Overpass
-              sample. Map and place data © OpenStreetMap contributors,
+              Results are sampled from Overpass; classification is based on
+              business names and contributed tags, not verified service lists. Map and place data © OpenStreetMap contributors,
               available under ODbL.
             </p>
           </>
