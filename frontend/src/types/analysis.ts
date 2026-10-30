@@ -25,6 +25,18 @@ export interface WebsitePageRecord {
   fetchedAt: string;
 }
 
+export type ModelEvidenceStatus = 'COMPLETED' | 'REUSED' | 'PENDING' | 'NOT_RECORDED' | 'NOT_REQUESTED' | 'SKIPPED' | 'FAILED' | 'UNVERIFIED';
+
+export interface ModelEvidence {
+  task: 'VISUAL' | 'SEGMENTATION' | 'RECOMMENDATIONS';
+  provider: string;
+  status: ModelEvidenceStatus;
+  modelName: string | null;
+  responseId: string | null;
+  completedAt: string | null;
+  detail: string;
+}
+
 export interface AnalysisRun {
   id: string;
   status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED';
@@ -42,6 +54,7 @@ export interface AnalysisRun {
   completedAt: string | null;
   websites: WebsiteRecord[];
   pages: WebsitePageRecord[];
+  modelEvidence?: ModelEvidence[];
 }
 
 export interface AnalysisRequest {

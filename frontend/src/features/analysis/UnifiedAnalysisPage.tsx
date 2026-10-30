@@ -5,7 +5,7 @@ import { getBusiness } from '../../services/businessApi';
 import { listStorefrontMedia, uploadStorefrontMedia } from '../../services/storefrontApi';
 import { latestEvidenceReport, readEvidenceReport } from '../../services/evidenceApi';
 import { deleteAnalysisHistory, latestAnalysis, listAnalysisHistory, readAnalysis, startAnalysis } from '../../services/analysisApi';
-import type { AnalysisRun, AnalysisRunHistoryItem } from '../../types/analysis';
+import type { AnalysisRun, AnalysisRunHistoryItem, ModelEvidence } from '../../types/analysis';
 import type { BusinessProfile } from '../../types/business';
 import type { ActionReadiness, EvidenceReport, EvidenceSource } from '../../types/evidence';
 import type { StorefrontMedia } from '../../types/storefront';
@@ -83,6 +83,47 @@ function Report({ report }: { report: EvidenceReport }) {
       {report.sources.map(source => <p key={source.id}><strong>{source.kind.replaceAll('_',' ')}</strong> · {source.description} <a href={source.sourceUrl} rel="noopener noreferrer" target={source.sourceUrl.startsWith('http') ? '_blank' : undefined}>View source</a></p>)}
       <h3>What we could not verify</h3><ul>{report.limitations.map((limitation, index) => <li key={index}>{limitation}</li>)}</ul>
     </details>
+  </section>;
+}
+
+const evidenceTitles: Record<ModelEvidence['task'], string> = {
+  VISUAL: 'Storefront inspection',
+  SEGMENTATION: 'Storefront sign segmentation',
+  RECOMMENDATIONS: 'Business recommendations',
+};
+
+const evidenceStatuses: Record<ModelEvidence['status'], string> = {
+  COMPLETED: 'Recorded during this run',
+  REUSED: 'Reused saved model result',
+  PENDING: 'Waiting for saved result',
+  NOT_RECORDED: 'No verified result',
+  NOT_REQUESTED: 'Not requested',
+  SKIPPED: 'Not supported for this input',
+  FAILED: 'Failed',
+  UNVERIFIED: 'Model provenance incomplete',
+};
+
+function ModelEvidenceSection({ entries }: { entries: ModelEvidence[] }) {
+  return <section className="s4-model-audit" aria-label="AI model evidence">
+    <header className="s4-unified-section-head"><div>
+      <p className="s4-kicker">MODEL EXECUTION EVIDENCE</p>
+      <h2>Which AI models contributed?</h2>
+      <p>These records come from saved model responses. A reused result is not a new API call, and a requested model is not proof it ran.</p>
+    </div></header>
+    <div className="s4-model-audit-list">{entries.map(entry =>
+      <article className="s4-model-audit-card" key={entry.task}>
+        <div className="s4-model-audit-top"><strong>{evidenceTitles[entry.task] ?? entry.task}</strong>
+          <span className={`s4-model-audit-status is-${entry.status.toLowerCase().replaceAll('_', '-')}`}>{evidenceStatuses[entry.status] ?? entry.status}</span>
+        </div>
+        <p>{entry.detail}</p>
+        {entry.modelName && <dl>
+          <div><dt>Provider</dt><dd>{entry.provider}</dd></div>
+          <div><dt>Recorded model</dt><dd>{entry.modelName}</dd></div>
+          {entry.completedAt && <div><dt>Completed</dt><dd>{new Date(entry.completedAt).toLocaleString()}</dd></div>}
+          {entry.responseId && <div><dt>API response ID</dt><dd className="s4-model-audit-id">{entry.responseId}</dd></div>}
+        </dl>}
+      </article>)}</div>
+    <p className="s4-model-audit-note">A stored response ID documents a model result; it does not independently verify every factual claim in its output. Inspect the storefront mask and cited sources before using recommendations.</p>
   </section>;
 }
 
@@ -462,6 +503,7 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
     </form>}
     {error && <p role="alert" className="s4-form-error"><CircleAlert size={16}/> {error}</p>}
     {run && <Progress run={run}/>}
+    {run && run.modelEvidence && <ModelEvidenceSection entries={run.modelEvidence}/>}
     {freshReport && report && <Report report={report}/>}
     {run && run.websites.length > 0 && <section className="s4-unified-websites">
       <div className="s4-unified-section-head"><div><p className="s4-kicker">FREE COMPETITOR & WEBSITE RESEARCH</p>

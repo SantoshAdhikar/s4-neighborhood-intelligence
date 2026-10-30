@@ -8,8 +8,13 @@ public record AnalysisRunResponse(
         UUID id, String status, String step, String detail,
         String goal, String website, String focusServices, UUID mediaId, UUID reportId,
         boolean useMeta, boolean segmentSign, String lastError,
-        Instant createdAt, Instant completedAt, List<WebsiteRecord> websites, List<PageRecord> pages
+        Instant createdAt, Instant completedAt, List<WebsiteRecord> websites, List<PageRecord> pages,
+        List<ModelEvidence> modelEvidence
 ) {
+    /** Populated only from saved provider records; status never implies a model call on its own. */
+    public record ModelEvidence(String task, String provider, String status, String modelName,
+                                String responseId, Instant completedAt, String detail) {}
+
     public record PageRecord(UUID websiteFindingId, String pageType, String pageUrl, String pageTitle,
                              String status, String observedSummary, String note, Instant fetchedAt) {}
 

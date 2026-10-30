@@ -44,6 +44,7 @@ public class AnalysisRunService {
     private final WebsiteResearchService websiteResearch;
     private final StorefrontSegmentationService segmentation;
     private final EvidenceReportService reports;
+    private final AnalysisModelEvidenceService modelEvidence;
     private final Executor executor = new ThreadPoolExecutor(1, 2, 30, TimeUnit.SECONDS,
             new ArrayBlockingQueue<>(4), new ThreadPoolExecutor.AbortPolicy());
 
@@ -51,7 +52,8 @@ public class AnalysisRunService {
                               WebsitePageFindingRepository pages,
                               BusinessProfileRepository businesses, StorefrontMediaService media,
                               NeighborhoodResearchService neighborhood, WebsiteResearchService websiteResearch,
-                              StorefrontSegmentationService segmentation, EvidenceReportService reports) {
+                              StorefrontSegmentationService segmentation, EvidenceReportService reports,
+                              AnalysisModelEvidenceService modelEvidence) {
         this.runs = runs;
         this.websites = websites;
         this.pages = pages;
@@ -61,6 +63,7 @@ public class AnalysisRunService {
         this.websiteResearch = websiteResearch;
         this.segmentation = segmentation;
         this.reports = reports;
+        this.modelEvidence = modelEvidence;
     }
 
     public AnalysisRunResponse start(UUID businessId, AnalysisRunRequest request) {
@@ -287,6 +290,7 @@ public class AnalysisRunService {
                         page.getObservedSummary(), page.getNote(), page.getFetchedAt())).toList();
         return new AnalysisRunResponse(run.getId(), run.getStatus(), run.getStep(), run.getDetail(),
                 run.getGoal(), run.getWebsite(), run.getFocusServices(), run.getMediaId(), run.getReportId(), run.isUseMeta(), run.isSegmentSign(),
-                run.getLastError(), run.getCreatedAt(), run.getCompletedAt(), findings, details);
+                run.getLastError(), run.getCreatedAt(), run.getCompletedAt(), findings, details,
+                modelEvidence.forRun(run));
     }
 }

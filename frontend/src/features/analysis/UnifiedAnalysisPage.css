@@ -146,3 +146,23 @@ button.s4-unified-history-latest:disabled{opacity:.55;cursor:wait}
 .s4-action-readiness-tag.is-ready-to-test{color:#206340;background:#e4f5e9}
 .s4-action-readiness-tag.is-plan-first{color:#315c99;background:#e6efff}
 @media(max-width:650px){.s4-unified-history-card .s4-unified-history-item{padding:10px 8px}.s4-unified-history-delete-one{margin-right:7px}.s4-unified-history-manage{gap:6px}}
+
+
+/* Saved execution provenance, intentionally separate from evidence-based recommendation ranking. */
+.s4-model-audit{background:#fff;border:1px solid #dce4ef;border-radius:18px;padding:23px 26px;margin:22px 0;box-shadow:0 5px 20px #14254b08}
+.s4-model-audit-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:17px}
+.s4-model-audit-card{background:#f9fbfe;border:1px solid #dee6f1;border-radius:12px;padding:15px;min-width:0}
+.s4-model-audit-top{display:flex;align-items:start;gap:8px;flex-wrap:wrap;justify-content:space-between}
+.s4-model-audit-top strong{font-size:.89rem;color:#1b3154}
+.s4-model-audit-status{font-size:.7rem;font-weight:800;padding:4px 8px;border-radius:20px;background:#eff2f7;color:#50627f;white-space:normal}
+.s4-model-audit-status.is-completed{background:#e3f5eb;color:#206747}
+.s4-model-audit-status.is-reused{background:#e9efff;color:#315b9d}
+.s4-model-audit-status.is-failed,.s4-model-audit-status.is-unverified{background:#fff1eb;color:#9f4b30}
+.s4-model-audit-card>p{font-size:.8rem;line-height:1.55;color:#546580;margin:11px 0}
+.s4-model-audit-card dl{margin:9px 0 0;padding-top:10px;border-top:1px solid #e2e9f3}
+.s4-model-audit-card dl div{margin:0 0 9px}
+.s4-model-audit-card dt{font-size:.69rem;font-weight:750;text-transform:uppercase;color:#72829a;letter-spacing:.035em}
+.s4-model-audit-card dd{font-size:.8rem;color:#1d3a69;margin:3px 0 0;overflow-wrap:anywhere}
+.s4-model-audit-note{font-size:.76rem;color:#667790;line-height:1.55;margin:14px 0 0}
+@media(max-width:950px){.s4-model-audit-list{grid-template-columns:1fr}}
+@media(max-width:650px){.s4-model-audit{padding:17px}}

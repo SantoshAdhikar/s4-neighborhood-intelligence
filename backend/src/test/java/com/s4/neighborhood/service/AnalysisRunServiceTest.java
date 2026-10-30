@@ -38,6 +38,7 @@ class AnalysisRunServiceTest {
     @Mock WebsiteResearchService websiteResearch;
     @Mock StorefrontSegmentationService segmentation;
     @Mock EvidenceReportService reports;
+    @Mock AnalysisModelEvidenceService modelEvidence;
     @InjectMocks AnalysisRunService service;
 
     @Test
