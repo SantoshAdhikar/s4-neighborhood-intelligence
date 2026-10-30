@@ -17,6 +17,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.LinkedHashSet;
+import java.util.ArrayList;
+import java.util.Set;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
@@ -129,6 +133,34 @@ public class AnalysisRunService {
     public AnalysisRunResponse get(UUID businessId, UUID runId) {
         return runs.findByIdAndBusinessId(runId, businessId).map(this::response)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Analysis run not found"));
+    }
+
+    /** Permanently removes selected run records and their FK-cascaded website observations.
+     *  Saved reports, media, and shared neighborhood snapshots remain untouched.
+     */
+    @Transactional
+    public void deleteHistory(UUID businessId, List<UUID> ids) {
+        if (ids == null || ids.isEmpty() || ids.size() > 50 || ids.stream().anyMatch(id -> id == null)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select between 1 and 50 analyses");
+        }
+        Set<UUID> unique = new LinkedHashSet<>(ids);
+        if (unique.size() != ids.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duplicate analysis IDs were submitted");
+        }
+        // Resolve every ID through the existing business-scoped lookup before deleting anything.
+        // This keeps a mixed-business batch atomic and avoids relying on nullable bulk lookups.
+        List<AnalysisRun> selected = new ArrayList<>(unique.size());
+        for (UUID runId : unique) {
+            AnalysisRun run = runs.findByIdAndBusinessId(runId, businessId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "One or more analyses were not found for this business"));
+            selected.add(run);
+        }
+        if (selected.stream().anyMatch(run -> "RUNNING".equals(run.getStatus()) || "QUEUED".equals(run.getStatus()))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Wait for running analyses to finish before deleting them");
+        }
+        // Foreign keys in V8/V11 cascade only website findings and their detail pages.
+        runs.deleteAllInBatch(selected);
     }
 
     void process(UUID id) {

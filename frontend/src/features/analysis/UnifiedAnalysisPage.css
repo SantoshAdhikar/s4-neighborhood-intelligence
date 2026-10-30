@@ -121,3 +121,28 @@
 .s4-unified-history-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
 button.s4-unified-history-latest{background:#fff;cursor:pointer;font:inherit;font-size:.82rem;font-weight:700}
 button.s4-unified-history-latest:disabled{opacity:.55;cursor:wait}
+
+/* Analysis history maintenance and transparent suggested action order. */
+.s4-unified-history-manage{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 13px}
+.s4-unified-history-manage button{display:inline-flex;gap:7px;align-items:center}
+.s4-unified-history-delete{background:#fff3f1;color:#a83e30;border:1px solid #efb8b0;border-radius:9px;padding:10px 13px;cursor:pointer;font:inherit;font-size:.82rem;font-weight:700}
+.s4-unified-history-delete:hover:not(:disabled){background:#ffe7e3}
+.s4-unified-history-delete:disabled,.s4-unified-history-delete-one:disabled{opacity:.4;cursor:not-allowed}
+.s4-unified-history-card{position:relative;min-width:0;display:flex;align-items:center;background:#fafcff;border:1px solid #e0e7f0;border-radius:12px;overflow:hidden}
+.s4-unified-history-card.is-selected{border-color:#5277b6;box-shadow:inset 0 0 0 1px #5277b6;background:#edf3ff}
+.s4-unified-history-card .s4-unified-history-item{flex:1;min-width:0;background:transparent;border:0;padding:13px 12px;box-shadow:none}
+.s4-unified-history-card .s4-unified-history-item:hover{background:#f5f8ff}
+.s4-unified-history-checkbox{display:flex;align-items:center;justify-content:center;padding:15px 0 15px 13px;cursor:pointer}
+.s4-unified-history-checkbox input{width:17px;height:17px;accent-color:#344b9d}
+.s4-unified-history-delete-one{display:flex;align-items:center;justify-content:center;align-self:center;margin:0 10px 0 0;padding:8px;background:white;color:#a03c39;border:1px solid #e9c3c3;border-radius:9px;cursor:pointer;flex:0 0 auto}
+.s4-unified-history-delete-one:hover:not(:disabled){background:#fff0ef}
+.s4-unified-history-safety{font-size:.76rem;color:#67768c;line-height:1.5;margin:13px 0 0}
+.s4-unified-history-notice{font-size:.81rem;color:#236d42;margin:12px 0}
+.s4-unified-history-card button:focus-visible,.s4-unified-history-manage button:focus-visible{outline:3px solid #547dcd;outline-offset:2px}
+.s4-action-readiness{background:#f7f9fd;padding:10px 12px;border-radius:9px;border:1px solid #e4eaf5;margin:9px 0}
+.s4-action-readiness p{font-size:.82rem;line-height:1.5;margin:7px 0 0}
+.s4-action-readiness small{display:block;color:#5e7090;margin-top:6px;font-size:.74rem;line-height:1.4}
+.s4-action-readiness-tag{display:inline-flex;font-size:.72rem;font-weight:800;letter-spacing:.01em;color:#79561e;background:#fff0d6;padding:4px 9px;border-radius:20px}
+.s4-action-readiness-tag.is-ready-to-test{color:#206340;background:#e4f5e9}
+.s4-action-readiness-tag.is-plan-first{color:#315c99;background:#e6efff}
+@media(max-width:650px){.s4-unified-history-card .s4-unified-history-item{padding:10px 8px}.s4-unified-history-delete-one{margin-right:7px}.s4-unified-history-manage{gap:6px}}

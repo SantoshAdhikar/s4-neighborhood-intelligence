@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/businesses/{businessId}/analysis-runs")
@@ -38,6 +39,23 @@ public class AnalysisRunController {
         return runs.latest(businessId).map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
+    public record DeleteHistoryRequest(List<UUID> ids) {}
+
+    @PostMapping("/delete")
+    public ResponseEntity<Void> deleteMany(@PathVariable UUID businessId,
+                                           @RequestBody DeleteHistoryRequest request) {
+        access.requireOwner(businessId);
+        runs.deleteHistory(businessId, request.ids());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{runId}")
+    public ResponseEntity<Void> deleteOne(@PathVariable UUID businessId, @PathVariable UUID runId) {
+        access.requireOwner(businessId);
+        runs.deleteHistory(businessId, List.of(runId));
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{runId}")
     public AnalysisRunResponse get(@PathVariable UUID businessId, @PathVariable UUID runId) {
         access.requireOwner(businessId);

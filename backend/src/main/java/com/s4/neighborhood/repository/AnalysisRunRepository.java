@@ -11,6 +11,7 @@ import java.util.UUID;
 public interface AnalysisRunRepository extends JpaRepository<AnalysisRun, UUID> {
     Optional<AnalysisRun> findTopByBusinessIdOrderByCreatedAtDesc(UUID businessId);
     Page<AnalysisRun> findByBusinessId(UUID businessId, Pageable pageable);
+    List<AnalysisRun> findByBusinessIdAndIdIn(UUID businessId, List<UUID> ids);
     Optional<AnalysisRun> findByIdAndBusinessId(UUID id, UUID businessId);
     boolean existsByBusinessIdAndStatusIn(UUID businessId, List<String> statuses);
     List<AnalysisRun> findByStatusIn(List<String> statuses);

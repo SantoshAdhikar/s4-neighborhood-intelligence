@@ -34,6 +34,17 @@ export interface EvidenceCoverage {
   ownerSources: number;
 }
 
+export interface ActionReadiness {
+  recommendedOrder: number;
+  modelRank: number;
+  readiness: 'READY_TO_TEST' | 'PLAN_FIRST' | 'VERIFY_FIRST';
+  reason: string;
+  matchedGoalTerms: number;
+  observedSources: number;
+  contextualSources: number;
+  ownerSources: number;
+}
+
 export interface EvidenceReport {
   id: string;
   businessId: string;
@@ -43,6 +54,7 @@ export interface EvidenceReport {
   sources: EvidenceSource[];
   opportunities: Opportunity[];
   evidenceCoverage?: EvidenceCoverage[];
+  actionReadiness?: ActionReadiness[];
   plan: DayAction[];
   limitations: string[];
   lastError: string | null;

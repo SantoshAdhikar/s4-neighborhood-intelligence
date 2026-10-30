@@ -136,13 +136,16 @@ public class EvidenceReportService {
     private EvidenceReportResponse toResponse(EvidenceReport report) {
         SavedReport saved = report.getReportJson() == null ? null
                 : json.readValue(report.getReportJson(), SavedReport.class);
+        List<EvidenceCoverage> coverage = saved == null ? List.of()
+                : EvidenceCoverageAssessor.assess(saved.opportunities(), saved.sources());
         return new EvidenceReportResponse(report.getId(), report.getBusinessId(), report.getStatus(),
                 report.getModelName(), report.getModelResponseId(),
                 saved == null ? List.of() : saved.sources(),
                 saved == null ? List.of() : saved.opportunities(),
                 saved == null ? List.of() : saved.plan(),
                 saved == null ? List.of() : saved.limitations(),
-                saved == null ? List.of() : EvidenceCoverageAssessor.assess(saved.opportunities(), saved.sources()),
+                coverage,
+                saved == null ? List.of() : OpportunityDecisionAssessor.assess(saved.opportunities(), saved.sources(), coverage),
                 report.getLastError(), report.getCreatedAt(), report.getCompletedAt());
     }
 

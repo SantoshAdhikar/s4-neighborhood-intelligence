@@ -21,6 +21,14 @@ export async function readAnalysis(businessId: string, runId: string) {
   return readJson<AnalysisRun>(await apiFetch(`${path(businessId)}/${encodeURIComponent(runId)}`));
 }
 
+/** Deletes saved run records and their captured website observations only. */
+export async function deleteAnalysisHistory(businessId: string, ids: string[]) {
+  const response = await apiFetch(`${path(businessId)}/delete`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }),
+  });
+  if (response.status !== 204) throw new Error('Could not delete the selected analyses');
+}
+
 export async function listAnalysisHistory(businessId: string, page = 0) {
   return readJson<AnalysisRunHistoryResponse>(await apiFetch(`${path(businessId)}?page=${page}`));
 }

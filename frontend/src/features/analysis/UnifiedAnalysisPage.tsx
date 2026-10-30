@@ -1,13 +1,13 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { ArrowRight, BookOpen, CheckCircle2, CircleAlert, Clock3, Coins, FileImage, Globe, LoaderCircle, MapPinned, Radar, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpen, CheckCircle2, CircleAlert, Clock3, Coins, FileImage, Globe, LoaderCircle, MapPinned, Radar, Sparkles, Trash2, SquareCheckBig } from 'lucide-react';
 import { getBusiness } from '../../services/businessApi';
 import { listStorefrontMedia, uploadStorefrontMedia } from '../../services/storefrontApi';
 import { latestEvidenceReport, readEvidenceReport } from '../../services/evidenceApi';
-import { latestAnalysis, listAnalysisHistory, readAnalysis, startAnalysis } from '../../services/analysisApi';
+import { deleteAnalysisHistory, latestAnalysis, listAnalysisHistory, readAnalysis, startAnalysis } from '../../services/analysisApi';
 import type { AnalysisRun, AnalysisRunHistoryItem } from '../../types/analysis';
 import type { BusinessProfile } from '../../types/business';
-import type { EvidenceReport, EvidenceSource } from '../../types/evidence';
+import type { ActionReadiness, EvidenceReport, EvidenceSource } from '../../types/evidence';
 import type { StorefrontMedia } from '../../types/storefront';
 import './UnifiedAnalysisPage.css';
 
@@ -37,13 +37,30 @@ function Report({ report }: { report: EvidenceReport }) {
   const sources = useMemo(() => new Map(report.sources.map((source) => [source.id, source])), [report.sources]);
   const coverageItems = (report as EvidenceReport & { evidenceCoverage?: EvidenceCoverageItem[] }).evidenceCoverage;
   const coverage = useMemo(() => new Map((coverageItems ?? []).map((item) => [item.rank, item])), [coverageItems]);
+  const actionReadiness = useMemo(() => new Map((report.actionReadiness ?? []).map(item => [item.modelRank, item])), [report.actionReadiness]);
+  const ranked = useMemo(() => [...report.opportunities].sort((a, b) => {
+    const aPosition = actionReadiness.get(a.rank)?.recommendedOrder ?? a.rank;
+    const bPosition = actionReadiness.get(b.rank)?.recommendedOrder ?? b.rank;
+    return aPosition - bPosition;
+  }), [report.opportunities, actionReadiness]);
   return <section className="s4-unified-report" aria-label="Business growth action report">
     <header className="s4-unified-section-head"><div><p className="s4-kicker">BUSINESS GROWTH REPORT</p>
-      <h2>Your three priorities</h2><p>Real model proposals based on saved sources, not predicted revenue.</p></div>
+      <h2>Your three priorities</h2><p>Suggested action order uses cited evidence, owner-goal wording, and stated effort. It does not predict sales or guarantee success.</p></div>
       <span className="s4-unified-model"><Sparkles size={16}/> AI recommendations · {report.modelName}</span></header>
     <div className="s4-unified-opportunities">
-      {[...report.opportunities].sort((a, b) => a.rank - b.rank).map((item) => <article key={item.rank}>
-        <div className="s4-unified-opportunity-rank">PRIORITY {item.rank} · {item.effort.toUpperCase()} EFFORT</div>
+      {ranked.map((item) => <article key={item.rank}>
+        <div className="s4-unified-opportunity-rank">{actionReadiness.has(item.rank)
+          ? `SUGGESTED ACTION ${actionReadiness.get(item.rank)?.recommendedOrder} · MODEL PRIORITY ${item.rank}`
+          : `PRIORITY ${item.rank}`} · {item.effort.toUpperCase()} EFFORT</div>
+        {actionReadiness.get(item.rank) && <div className="s4-action-readiness">
+          <span className={`s4-action-readiness-tag is-${actionReadiness.get(item.rank)?.readiness.toLowerCase().replaceAll('_', '-')}`}>
+            {actionReadiness.get(item.rank)?.readiness === 'READY_TO_TEST' ? 'Ready for a small test'
+              : actionReadiness.get(item.rank)?.readiness === 'PLAN_FIRST' ? 'Plan effort first' : 'Verify evidence first'}
+          </span>
+          <p>{actionReadiness.get(item.rank)?.reason}</p>
+          {(actionReadiness.get(item.rank) as ActionReadiness).matchedGoalTerms > 0 &&
+            <small>Shares wording with the owner-stated goal or service focus. This is not a semantic relevance guarantee.</small>}
+        </div>}
         <h3>{item.title}</h3><p>{item.rationale}</p>
         {coverage.get(item.rank) && <div className={`s4-evidence-coverage s4-coverage-${coverage.get(item.rank)?.level.toLowerCase().replaceAll('_', '-')}`}>
           <strong>{coverage.get(item.rank)?.label}</strong>
@@ -97,6 +114,10 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
   const [historyHasMore, setHistoryHasMore] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState('');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
+  const [deletingHistory, setDeletingHistory] = useState(false);
+  const [historyNotice, setHistoryNotice] = useState('');
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
   const [media, setMedia] = useState<StorefrontMedia[]>([]);
   const [goal, setGoal] = useState('');
@@ -212,6 +233,47 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
     }
   }
 
+  function toggleSelected(id: string) {
+    setSelectedRunIds(previous => previous.includes(id)
+      ? previous.filter(item => item !== id) : [...previous, id]);
+  }
+
+  async function removeHistory(ids: string[]) {
+    if (deletingHistory || ids.length === 0) return;
+    const allowed = history.filter(item => ids.includes(item.id)
+      && item.status !== 'RUNNING' && item.status !== 'QUEUED');
+    if (allowed.length !== ids.length) {
+      setHistoryError('Only finished or failed analyses can be deleted.');
+      return;
+    }
+    const message = ids.length === 1
+      ? 'Permanently remove this analysis from history and delete its captured website findings? Saved Growth Reports and photos will be kept.'
+      : `Permanently remove ${ids.length} analyses from history and delete their captured website findings? Saved Growth Reports and photos will be kept.`;
+    if (!window.confirm(message)) return;
+    setDeletingHistory(true);
+    setHistoryError('');
+    setHistoryNotice('');
+    try {
+      await deleteAnalysisHistory(businessId, ids);
+      setSelectedRunIds([]);
+      setSelectionMode(false);
+      if (run?.id && ids.includes(run.id)) {
+        window.location.assign(`/businesses/${encodeURIComponent(businessId)}/analyze`);
+        return;
+      }
+      setHistoryNotice(`${ids.length} saved ${ids.length === 1 ? 'analysis' : 'analyses'} removed from history.`);
+      // Reload from page zero because deleting a run changes pagination offsets.
+      const updated = await listAnalysisHistory(businessId);
+      setHistory(updated.items);
+      setHistoryPage(0);
+      setHistoryHasMore(updated.hasMore);
+    } catch (cause) {
+      setHistoryError(cause instanceof Error ? cause.message : 'Could not delete selected analyses.');
+    } finally {
+      setDeletingHistory(false);
+    }
+  }
+
   const activeRunId =
     run?.status === 'QUEUED' || run?.status === 'RUNNING'
       ? run.id
@@ -318,22 +380,50 @@ export default function UnifiedAnalysisPage({ businessId }: { businessId: string
           {savedRunId && <Link className="s4-unified-history-latest" to={`/businesses/${businessId}/analyze`}>View latest</Link>}
         </div>
       </div>
+      {history.length > 0 && <div className="s4-unified-history-manage">
+        <button type="button" className="s4-unified-history-latest" disabled={deletingHistory}
+          onClick={() => { setSelectionMode(current => !current); setSelectedRunIds([]); }}>
+          <SquareCheckBig size={15}/> {selectionMode ? 'Cancel selection' : 'Select analyses'}
+        </button>
+        {selectionMode && <>
+          <button type="button" className="s4-unified-history-latest"
+            onClick={() => setSelectedRunIds(visibleHistory.filter(item => item.status !== 'RUNNING' && item.status !== 'QUEUED').map(item => item.id))}>
+            Select shown ({visibleHistory.filter(item => item.status !== 'RUNNING' && item.status !== 'QUEUED').length})
+          </button>
+          <button type="button" className="s4-unified-history-latest" onClick={() => setSelectedRunIds([])}>Clear</button>
+          <button type="button" className="s4-unified-history-delete" disabled={!selectedRunIds.length || deletingHistory}
+            onClick={() => void removeHistory(selectedRunIds)}>
+            <Trash2 size={15}/> {deletingHistory ? 'Deleting…' : `Delete selected (${selectedRunIds.length})`}
+          </button>
+        </>}
+      </div>}
       {history.length > 0 ? <div className="s4-unified-history-list">
-        {visibleHistory.map((item, index) => <Link key={item.id}
-          to={`/businesses/${businessId}/analyze?runId=${encodeURIComponent(item.id)}`}
-          className={`s4-unified-history-item ${run?.id === item.id ? 'is-selected' : ''}`}
-          aria-current={run?.id === item.id ? 'page' : undefined}>
-          <div className="s4-unified-history-item-title"><strong>{index === 0 ? 'Most recent' : 'Previous analysis'} · {new Date(item.createdAt).toLocaleString()}</strong>
-            <span className={`s4-unified-history-status is-${item.status.toLowerCase()}`}>{item.status}</span></div>
-          <p>{item.goal}</p><small>{item.useMeta ? 'Meta AI' : 'Local AI'} · {item.reportId ? 'Saved growth report' : 'Research record'}{run?.id === item.id ? ' · Viewing now' : ''}</small>
-        </Link>)}
+        {visibleHistory.map((item, index) => <div key={item.id} className={`s4-unified-history-card ${run?.id === item.id ? 'is-selected' : ''}`}>
+          {selectionMode && <label className="s4-unified-history-checkbox">
+            <input type="checkbox" checked={selectedRunIds.includes(item.id)}
+              disabled={item.status === 'RUNNING' || item.status === 'QUEUED' || deletingHistory}
+              onChange={() => toggleSelected(item.id)} aria-label={`Select analysis from ${new Date(item.createdAt).toLocaleString()}`}/>
+          </label>}
+          <Link to={`/businesses/${businessId}/analyze?runId=${encodeURIComponent(item.id)}`}
+            className="s4-unified-history-item" aria-current={run?.id === item.id ? 'page' : undefined}>
+            <div className="s4-unified-history-item-title"><strong>{index === 0 ? 'Most recent' : 'Previous analysis'} · {new Date(item.createdAt).toLocaleString()}</strong>
+              <span className={`s4-unified-history-status is-${item.status.toLowerCase()}`}>{item.status}</span></div>
+            <p>{item.goal}</p><small>{item.useMeta ? 'Meta AI' : 'Local AI'} · {item.reportId ? 'Saved growth report' : 'Research record'}{run?.id === item.id ? ' · Viewing now' : ''}</small>
+          </Link>
+          {!selectionMode && <button type="button" className="s4-unified-history-delete-one" title="Remove this analysis from history"
+            aria-label={`Delete analysis from ${new Date(item.createdAt).toLocaleString()}`}
+            disabled={item.status === 'RUNNING' || item.status === 'QUEUED' || deletingHistory}
+            onClick={() => void removeHistory([item.id])}><Trash2 size={15}/></button>}
+        </div>)}
       </div> : !loading && <p className="s4-unified-history-empty">No saved analyses found for this business yet.</p>}
       {history.length > 3 && <button type="button" className="s4-unified-history-more"
         onClick={() => setExpandedHistory(current => !current)}>{expandedHistory ? 'Show recent 3' : `See all ${history.length} recent analyses`}</button>}
       {historyHasMore && expandedHistory && <button type="button" className="s4-unified-history-more" disabled={historyLoading}
         onClick={() => void loadMoreHistory()}>{historyLoading ? 'Loading earlier analyses…' : 'Show older analyses'}</button>}
       {savedRunId && run && !history.some(item => item.id === run.id) && <p className="s4-unified-history-empty">Viewing archived analysis from {new Date(run.createdAt).toLocaleString()}.</p>}
+      {historyNotice && <p role="status" className="s4-unified-history-notice">{historyNotice}</p>}
       {historyError && <p role="alert" className="s4-form-error">{historyError}</p>}
+      <p className="s4-unified-history-safety">Deletion removes selected analysis entries and their run-specific website findings. Saved Growth Reports, uploaded photos and the business profile are preserved. Active runs cannot be deleted.</p>
     </section>
     {loading ? <p>Loading business profile…</p> : <form className="s4-unified-form" onSubmit={(event) => void submit(event)}>
       <div className="s4-unified-section-head"><div><p className="s4-kicker">NEW ANALYSIS</p><h2>{business?.name}</h2><p>All requirements in one place. No more switching between steps.</p></div></div>
