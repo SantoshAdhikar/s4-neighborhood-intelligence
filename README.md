@@ -10,7 +10,7 @@ Rather than asking an AI model to guess what competitors are doing, S4 collects 
 
 Developed for the **Meta Global AI Developer Hackathon (2026)**, under the *Build for Your World* theme. The project is a working local prototype, **not a production-deployed competitive-intelligence service**.
 
-## See S4 in action
+## How S4 works
 
 A typical business-owner workflow:
 
@@ -226,15 +226,7 @@ The repository includes unit and integration tests for analysis orchestration, m
 
 During local development, the owner-facing workflow has been exercised with a real business example. Saved model-provenance records have shown a Muse Spark recommendation response together with previously generated Muse inspection and SAM segmentation results. **That does not establish that every model ran anew in the same analysis.** The final recorded demonstration should disclose exactly what was newly generated and what was reused.
 
-## What to review in the hackathon demo
 
-- **The question:** Why might nearby customers overlook a real small business?
-- **The evidence:** Show the neighborhood results, public website findings, actual storefront image, and saved SAM overlay.
-- **The Meta contribution:** Open **AI Model Evidence** and identify which Muse Spark and SAM 3.1 responses were new versus reused, with the recorded model names and response IDs.
-- **The decision:** Explain one concrete opportunity, its supporting and contradictory evidence, and the seven-day task designed to test it.
-- **The limits:** Explain what S4 cannot know from public sources, and which model observations need visual confirmation.
-
-Screenshots, a video walkthrough, and the formal submission are managed separately; no uncommitted `docs/` links or unavailable demo assets are required to render this README.
 
 ## Event references
 
@@ -242,4 +234,5 @@ Screenshots, a video walkthrough, and the formal submission are managed separate
 - [Cerebral Valley event page](https://events.cerebralvalley.ai/e/meta-ai-developer-hackathon)
 - [Meta Model API](https://dev.meta.ai/)
 
-**License:** No repository-wide open-source license was present in the supplied code snapshot. A license should be added only after the author decides the terms. Public visibility is not automatically permission for unrestricted reuse.
+## License
+No open-source license has been added to this project yet.
