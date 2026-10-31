@@ -201,11 +201,7 @@ The repository includes unit and integration tests for analysis orchestration, m
 
 During local development, the owner-facing workflow has been exercised with a real business example. Saved model-provenance records have shown a Muse Spark recommendation response together with previously generated Muse inspection and SAM segmentation results. **That does not establish that every model ran anew in the same analysis.** The final recorded demonstration should disclose exactly what was newly generated and what was reused.
 
-## Demo and submission preparation
 
-- [Demo script and shot list](docs/DEMO_SCRIPT.md)
-- [Submission verification checklist](docs/SUBMISSION_CHECKLIST.md)
-- [System boundaries and architecture notes](docs/SYSTEM_NOTES.md)
 
 ## Event references
 
