@@ -1,5 +1,7 @@
 # S4 Neighborhood Intelligence
 
+**See your neighborhood. Understand your competition. Know your next move.**
+
 **Evidence-aware neighborhood research and practical action planning for local businesses.**
 
 S4 Neighborhood Intelligence is a local-first web application that helps a small-business operator answer a concrete question: **“What should I improve to attract more customers, and what evidence supports that decision?”**
@@ -7,6 +9,18 @@ S4 Neighborhood Intelligence is a local-first web application that helps a small
 Rather than asking an AI model to guess what competitors are doing, S4 collects a bounded set of observable signals, keeps track of their sources, and generates a prioritized action plan with explicit limitations. The user can inspect storefront imagery, review nearby places and public websites, reopen prior analyses, and see which AI model operations were newly performed or reused.
 
 Developed for the **Meta Global AI Developer Hackathon (2026)**, under the *Build for Your World* theme. The project is a working local prototype, **not a production-deployed competitive-intelligence service**.
+
+## See S4 in action
+
+A typical business-owner workflow:
+
+1. **Set the goal.** Choose a business, the services to focus on, and a practical goal such as attracting more local customers.
+2. **Investigate the area.** S4 discovers nearby businesses and inspects permitted public website content, preserving where each observation came from.
+3. **Inspect the storefront.** With the owner's consent, Muse Spark examines an uploaded JPEG, PNG or MP4, while SAM 3.1 can identify candidate regions such as storefront signage.
+4. **Review the decisions.** The analysis produces three suggested opportunities and a seven-day action plan, with cited sources, uncertainty and measurements to try.
+5. **Audit and revisit.** The owner can inspect the original media, segmentation overlay, AI model execution records, and past analysis reports.
+
+**Demo evidence:** A saved local test recorded a new Muse Spark recommendation response alongside previously saved Muse storefront observations and SAM segmentation. The interface explicitly distinguishes new model operations from reused results. A single fresh end-to-end run of every model has not yet been established by this evidence.
 
 ## The problem
 
@@ -19,7 +33,7 @@ A small-business owner often lacks the time or expertise to compare nearby listi
 | Business workspace | Register/sign in, create or edit a business profile, and select a business goal and focus services. |
 | Neighborhood discovery | Geocoding and nearby-place discovery using OpenStreetMap services, with optional Overture Maps place enrichment. |
 | Website research | Bounded inspection of publicly accessible business homepages and selected detail pages; records skipped or inaccessible pages rather than fabricating content. |
-| Storefront inspection | Owner-provided photo analyzed using **Muse Spark** through the **Meta Model API**, when enabled. |
+| Storefront inspection | Owner-provided JPEG, PNG or MP4 analyzed using **Muse Spark** through the **Meta Model API**, when enabled. |
 | Storefront segmentation | Optional **SAM 3.1** concept-based region detection, with a visual overlay and an explicitly suggested sign-focused view. |
 | One-click analysis | Coordinates local research, optional visual analysis, and a cited report that contains three opportunities and a seven-day plan. |
 | Model selection | An opt-in Meta-powered path, or a local **Ollama** report path using `qwen2.5:7b` by default. |
@@ -36,6 +50,14 @@ A small-business owner often lacks the time or expertise to compare nearby listi
 3. **Muse Spark** turns the gathered evidence catalog into exactly three proposed opportunities and a seven-day action plan. Each item references source IDs and describes uncertainty, effort, and a measurement to try.
 
 The interface exposes the recorded provenance for each operation. **A saved result completed before the current run is marked as reused; opening history does not prove another API request occurred.** Meta usage is opt-in and can consume Model API credits. When Meta is disabled, the local Ollama path does not call the Meta API for report generation.
+
+## Project status and boundaries
+
+**Current status:** Functional local hackathon prototype. It is not hosted as a production service, and outputs are recommendations to verify rather than measured business results.
+
+**Not part of the demonstrated core workflow:** Automatically generated storefront before-and-after improvement images, post-action outcome tracking, and an unrestricted natural-language agent instruction field. These are potential later additions, not features claimed as implemented here.
+
+The app does not guarantee increases in customer traffic, sales, or rankings. A storefront detection score is a model estimate, not independent proof that a mask is accurate.
 
 ## Architecture
 
@@ -84,7 +106,6 @@ frontend/
   src/features/     # Business, neighborhood, storefront, analysis and evidence views
   src/services/     # API clients
   public/           # UI assets and custom icons
-
 ```
 
 ## Run locally (Windows / PowerShell)
@@ -104,10 +125,17 @@ The application expects a **pre-created PostgreSQL database and role**. Flyway w
 
 ### 1. Configure the backend terminal
 
+Clone the project and enter its folder if you have not already done so:
+
+```powershell
+git clone https://github.com/SantoshAdhikar/s4-neighborhood-intelligence.git
+cd s4-neighborhood-intelligence
+```
+
 From the repository root, open **PowerShell** and run:
 
 ```powershell
-cd D:\Hackathon\s4-neighborhood-intelligence\backend
+cd backend
 
 # Enter your existing database password without displaying it.
 $secret = Read-Host "S4 PostgreSQL app password" -AsSecureString
@@ -149,10 +177,10 @@ The backend listens at `http://127.0.0.1:8080`. A health check is available at `
 
 ### 3. Frontend
 
-Open a **second** PowerShell terminal:
+Open a **second** PowerShell terminal in the repository root:
 
 ```powershell
-cd D:\Hackathon\s4-neighborhood-intelligence\frontend
+cd frontend
 npm ci
 npm run lint
 npm run build
@@ -198,7 +226,15 @@ The repository includes unit and integration tests for analysis orchestration, m
 
 During local development, the owner-facing workflow has been exercised with a real business example. Saved model-provenance records have shown a Muse Spark recommendation response together with previously generated Muse inspection and SAM segmentation results. **That does not establish that every model ran anew in the same analysis.** The final recorded demonstration should disclose exactly what was newly generated and what was reused.
 
+## What to review in the hackathon demo
 
+- **The question:** Why might nearby customers overlook a real small business?
+- **The evidence:** Show the neighborhood results, public website findings, actual storefront image, and saved SAM overlay.
+- **The Meta contribution:** Open **AI Model Evidence** and identify which Muse Spark and SAM 3.1 responses were new versus reused, with the recorded model names and response IDs.
+- **The decision:** Explain one concrete opportunity, its supporting and contradictory evidence, and the seven-day task designed to test it.
+- **The limits:** Explain what S4 cannot know from public sources, and which model observations need visual confirmation.
+
+Screenshots, a video walkthrough, and the formal submission are managed separately; no uncommitted `docs/` links or unavailable demo assets are required to render this README.
 
 ## Event references
 
