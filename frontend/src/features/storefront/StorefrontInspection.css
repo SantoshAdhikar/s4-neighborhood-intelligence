@@ -70,3 +70,22 @@
   .sam-concept-inputs { display: grid; }
   .sam-concept-inputs input { width: 100%; }
 }
+
+/* Scoped photo deletion controls */
+.storefront-card-actions { display:flex; flex-wrap:wrap; align-items:center; gap:9px; }
+.storefront-delete-trigger { border:1px solid #efd6d6; background:#fff8f8; color:#a33838; border-radius:8px; padding:7px 11px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+.storefront-delete-trigger:hover { background:#ffefef; }
+.storefront-delete-trigger:disabled { opacity:.5; cursor:not-allowed; }
+.storefront-delete-backdrop { position:fixed; inset:0; z-index:9999; display:flex; overflow-y:auto; overscroll-behavior:contain; padding:20px; background:rgba(10,24,48,.58); }
+.storefront-delete-dialog { margin:auto; background:#fff; border:1px solid #dce4ef; border-radius:16px; width:min(480px,100%); max-height:calc(100dvh - 40px); overflow-y:auto; padding:24px; box-shadow:0 22px 68px rgba(15,35,70,.25); }
+.storefront-delete-dialog h3 { margin:0 0 12px; font-size:21px; }
+.storefront-delete-dialog p { line-height:1.65; font-size:14px; color:#4e5e78; overflow-wrap:anywhere; }
+.storefront-delete-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+.storefront-delete-actions button { border:1px solid #cad4e3; background:#fff; color:#10264a; border-radius:9px; padding:10px 14px; font-weight:700; cursor:pointer; }
+.storefront-delete-actions .storefront-delete-confirm { background:#ac3232; border-color:#ac3232; color:white; }
+.storefront-delete-actions button:disabled { opacity:.6; cursor:not-allowed; }
+
+.sam-sign-focus { display:flex; gap:12px; flex-wrap:wrap; justify-content:space-between; align-items:center; border:1px solid #cddcf6; background:#f4f7ff; border-radius:11px; padding:12px 14px; margin:13px 0; }
+.sam-sign-focus strong { font-size:13px; }
+.sam-sign-focus p { color:#5a6b84; margin:5px 0 0; font-size:12px; }
+.sam-sign-focus button { background:#10264a; color:#fff; border:0; border-radius:8px; padding:9px 12px; font-size:12px; font-weight:700; cursor:pointer; }

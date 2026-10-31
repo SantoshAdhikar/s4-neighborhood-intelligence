@@ -6,8 +6,14 @@ import com.s4.neighborhood.dto.VisualFindings;
 import com.s4.neighborhood.entity.BusinessProfile;
 import com.s4.neighborhood.entity.StorefrontMedia;
 import com.s4.neighborhood.repository.BusinessProfileRepository;
+import com.s4.neighborhood.repository.AnalysisRunRepository;
 import com.s4.neighborhood.repository.StorefrontMediaRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,6 +30,8 @@ import java.util.*;
 
 @Service
 public class StorefrontMediaService {
+    private static final Logger log = LoggerFactory.getLogger(StorefrontMediaService.class);
+    private final AnalysisRunRepository runs;
     private final BusinessProfileRepository businesses;
     private final StorefrontMediaRepository repository;
     private final MetaVisionClient meta;
@@ -35,6 +43,7 @@ public class StorefrontMediaService {
     public StorefrontMediaService(
             BusinessProfileRepository businesses,
             StorefrontMediaRepository repository,
+            AnalysisRunRepository runs,
             MetaVisionClient meta,
             JsonMapper json,
             @Value("${s4.media.root}") String root,
@@ -43,6 +52,7 @@ public class StorefrontMediaService {
     ) {
         this.businesses = businesses;
         this.repository = repository;
+        this.runs = runs;
         this.meta = meta;
         this.json = json;
         this.root = Path.of(root).toAbsolutePath().normalize();
@@ -113,6 +123,43 @@ public class StorefrontMediaService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file was not found");
         }
         return new MediaFile(file, media.getMimeType());
+    }
+
+    /** Remove an unreferenced media item and its dependent SAM records. Saved analysis evidence remains intact. */
+    @Transactional
+    public void delete(UUID businessId, UUID mediaId) {
+        StorefrontMedia item = findMedia(businessId, mediaId);
+        if ("ANALYZING".equals(item.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This photo is being analyzed. Wait for the analysis to finish before deleting it.");
+        }
+        if (runs.existsByBusinessIdAndMediaId(businessId, mediaId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This photo is used by a saved analysis. Delete the linked analysis history first to preserve evidence integrity.");
+        }
+        Path stored = root.resolve(item.getStorageKey()).normalize();
+        if (!stored.startsWith(root)) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Invalid saved media location");
+        }
+        // Database has ON DELETE CASCADE for segmentation rows. Delete bytes only after DB commit.
+        repository.delete(item);
+        repository.flush();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { removeStoredFile(stored); }
+            });
+        } else {
+            // Transactional entry from Spring always has synchronization; fail rather than silently retain bytes.
+            throw new IllegalStateException("Media deletion requires an active database transaction");
+        }
+    }
+
+    private void removeStoredFile(Path stored) {
+        try {
+            Files.deleteIfExists(stored);
+        } catch (IOException exception) {
+            log.warn("Stored media cleanup failed after database deletion: {}", stored.getFileName(), exception);
+        }
     }
 
     public StorefrontMediaResponse analyze(UUID businessId, UUID mediaId) {

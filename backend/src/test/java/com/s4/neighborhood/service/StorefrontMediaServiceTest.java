@@ -5,6 +5,7 @@ import com.s4.neighborhood.dto.VisualFindings;
 import com.s4.neighborhood.entity.BusinessProfile;
 import com.s4.neighborhood.entity.StorefrontMedia;
 import com.s4.neighborhood.repository.BusinessProfileRepository;
+import com.s4.neighborhood.repository.AnalysisRunRepository;
 import com.s4.neighborhood.repository.StorefrontMediaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.file.Files;
@@ -29,6 +32,7 @@ class StorefrontMediaServiceTest {
 
     private final BusinessProfileRepository businesses = mock(BusinessProfileRepository.class);
     private final StorefrontMediaRepository media = mock(StorefrontMediaRepository.class);
+    private final AnalysisRunRepository runs = mock(AnalysisRunRepository.class);
     private final MetaVisionClient meta = mock(MetaVisionClient.class);
     private final JsonMapper json = JsonMapper.builder().build();
     private StorefrontMediaService service;
@@ -37,7 +41,7 @@ class StorefrontMediaServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new StorefrontMediaService(businesses, media, meta, json,
+        service = new StorefrontMediaService(businesses, media, runs, meta, json,
                 mediaRoot.toString(), 5_000_000, 2);
         businessId = UUID.randomUUID();
         business = new BusinessProfile();
@@ -45,6 +49,70 @@ class StorefrontMediaServiceTest {
         business.setIndustry("Retail");
         business.setServices("Retail goods");
         business.setPrimaryGoal("Improve visibility");
+    }
+
+    @Test
+    void cannotDeletePhotoLinkedToSavedAnalysis() {
+        UUID mediaId = UUID.randomUUID();
+        StorefrontMedia stored = new StorefrontMedia();
+        stored.setBusinessId(businessId);
+        stored.setStorageKey("linked.png");
+        when(media.findByIdAndBusinessId(mediaId, businessId)).thenReturn(Optional.of(stored));
+        when(runs.existsByBusinessIdAndMediaId(businessId, mediaId)).thenReturn(true);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> service.delete(businessId, mediaId));
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(media, never()).delete(any(StorefrontMedia.class));
+    }
+
+    @Test
+    void cannotDeletePhotoDuringActiveInspection() {
+        UUID mediaId = UUID.randomUUID();
+        StorefrontMedia stored = new StorefrontMedia();
+        stored.setBusinessId(businessId);
+        stored.setStatus("ANALYZING");
+        when(media.findByIdAndBusinessId(mediaId, businessId)).thenReturn(Optional.of(stored));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> service.delete(businessId, mediaId));
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        verifyNoInteractions(runs);
+    }
+
+    @Test
+    void deletesUnusedPhotoFileAfterDatabaseCommit() throws Exception {
+        UUID mediaId = UUID.randomUUID();
+        StorefrontMedia stored = new StorefrontMedia();
+        stored.setBusinessId(businessId);
+        stored.setStorageKey("unused.png");
+        stored.setStatus("FAILED");
+        Path file = mediaRoot.resolve("unused.png");
+        Files.write(file, new byte[] {1, 2, 3});
+        when(media.findByIdAndBusinessId(mediaId, businessId)).thenReturn(Optional.of(stored));
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.delete(businessId, mediaId);
+            assertTrue(Files.exists(file), "file must survive until commit");
+            verify(media).delete(stored);
+            verify(media).flush();
+            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                sync.afterCommit();
+            }
+            assertFalse(Files.exists(file));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void cannotDeleteSomeoneElsesMedia() {
+        UUID mediaId = UUID.randomUUID();
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> service.delete(businessId, mediaId));
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        verifyNoInteractions(runs);
+        verify(media, never()).delete(any(StorefrontMedia.class));
     }
 
     @Test

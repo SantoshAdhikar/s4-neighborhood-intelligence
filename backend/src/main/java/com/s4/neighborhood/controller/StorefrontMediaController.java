@@ -48,6 +48,13 @@ public class StorefrontMediaController {
                 .body(new FileSystemResource(media.path()));
     }
 
+    @DeleteMapping("/{mediaId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable UUID businessId, @PathVariable UUID mediaId) {
+        access.requireOwner(businessId);
+        service.delete(businessId, mediaId);
+    }
+
     @PostMapping("/{mediaId}/analyze")
     public StorefrontMediaResponse analyze(@PathVariable UUID businessId,
                                            @PathVariable UUID mediaId) {

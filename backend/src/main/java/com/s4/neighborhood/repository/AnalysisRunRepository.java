@@ -13,6 +13,7 @@ public interface AnalysisRunRepository extends JpaRepository<AnalysisRun, UUID> 
     Page<AnalysisRun> findByBusinessId(UUID businessId, Pageable pageable);
     List<AnalysisRun> findByBusinessIdAndIdIn(UUID businessId, List<UUID> ids);
     Optional<AnalysisRun> findByIdAndBusinessId(UUID id, UUID businessId);
+    boolean existsByBusinessIdAndMediaId(UUID businessId, UUID mediaId);
     boolean existsByBusinessIdAndStatusIn(UUID businessId, List<String> statuses);
     List<AnalysisRun> findByStatusIn(List<String> statuses);
 }

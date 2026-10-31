@@ -64,6 +64,7 @@ class ProtectedBusinessEndpointsTest {
         assertMissing(() -> storefront.list(id));
         assertMissing(() -> storefront.media(id, mediaId));
         assertMissing(() -> storefront.analyze(id, mediaId));
+        assertMissing(() -> storefront.delete(id, mediaId));
         assertMissing(() -> masks.list(id, mediaId));
         assertMissing(() -> masks.segment(id, mediaId, null));
         verifyNoInteractions(media, segmentation);

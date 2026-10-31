@@ -34,6 +34,18 @@ export async function uploadStorefrontMedia(businessId: string, file: File) {
   }));
 }
 
+export async function deleteStorefrontMedia(businessId: string, mediaId: string): Promise<void> {
+  const response = await apiFetch(`${path(businessId)}/${encodeURIComponent(mediaId)}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const data: unknown = await response.json().catch(() => null);
+    const detail = data && typeof data === 'object' && 'detail' in data
+      ? (data as { detail?: unknown }).detail : null;
+    throw new Error(typeof detail === 'string' ? detail : `Could not delete photo (HTTP ${response.status})`);
+  }
+}
+
 export async function analyzeStorefrontMedia(businessId: string, mediaId: string) {
   return readResponse<StorefrontMedia>(await apiFetch(
     `${path(businessId)}/${encodeURIComponent(mediaId)}/analyze`,

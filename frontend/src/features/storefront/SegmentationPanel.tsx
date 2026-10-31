@@ -12,12 +12,12 @@ interface Props {
   sizeBytes: number;
 }
 
-function MaskViewer({ imageUrl, rawOutput }: { imageUrl: string; rawOutput: string }) {
+function MaskViewer({ imageUrl, rawOutput, concept }: { imageUrl: string; rawOutput: string; concept: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [showMasks, setShowMasks] = useState(true);
   const [showBoxes, setShowBoxes] = useState(true);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>('__suggested__');
 
   const parsed = useMemo(() => {
     try {
@@ -31,6 +31,22 @@ function MaskViewer({ imageUrl, rawOutput }: { imageUrl: string; rawOutput: stri
 
   const boxes = useMemo(() => parsed.result ? recordsOfKind(parsed.result.records, 'box') : [], [parsed]);
   const masks = useMemo(() => parsed.result ? recordsOfKind(parsed.result.records, 'mask') : [], [parsed]);
+  // Geometry-only suggestion for signs; not an AI classification or a verified identification.
+  const signCandidate = useMemo(() => {
+    if (concept.toLowerCase() !== 'storefront sign' || dimensions.width === 0 || dimensions.height === 0) return null;
+    return boxes.map((box) => {
+      const width = box.right - box.left;
+      const height = box.bottom - box.top;
+      const ratio = width / Math.max(height, 1);
+      const centerY = (box.top + box.bottom) / 2 / dimensions.height;
+      const relWidth = width / dimensions.width;
+      if (ratio < 1.4 || ratio > 14 || centerY > 0.67 || relWidth < 0.12 || relWidth > 0.9) return null;
+      const score = (1 - centerY) * 2 + Math.min(relWidth, .55) + Math.min(ratio, 6) / 6;
+      return { id: box.objectId, score };
+    }).filter((item): item is { id: string; score: number } => item !== null)
+      .sort((a, b) => b.score - a.score)[0] ?? null;
+  }, [boxes, concept, dimensions]);
+  const focusedId = selectedId === '__suggested__' ? (signCandidate?.id ?? null) : selectedId;
   const objects = useMemo(() => {
     const ids = [...new Set([...boxes.map((box) => box.objectId), ...masks.map((mask) => mask.objectId)])];
     return ids.map((id) => ({
@@ -62,7 +78,7 @@ function MaskViewer({ imageUrl, rawOutput }: { imageUrl: string; rawOutput: stri
 
     if (showMasks) {
       for (const [index, { record, raster }] of decoded.records.entries()) {
-        if (selectedId !== null && record.objectId !== selectedId) continue;
+        if (focusedId !== null && record.objectId !== focusedId) continue;
         const { width, height } = record.mask;
         const maskCanvas = document.createElement('canvas');
         maskCanvas.width = width;
@@ -78,7 +94,7 @@ function MaskViewer({ imageUrl, rawOutput }: { imageUrl: string; rawOutput: stri
           pixels.data[offset] = color[0];
           pixels.data[offset + 1] = color[1];
           pixels.data[offset + 2] = color[2];
-          pixels.data[offset + 3] = selectedId ? 145 : 92;
+          pixels.data[offset + 3] = focusedId ? 145 : 92;
         }
         maskContext.putImageData(pixels, 0, 0);
         context.drawImage(maskCanvas, record.bounds.left, record.bounds.top,
@@ -91,7 +107,7 @@ function MaskViewer({ imageUrl, rawOutput }: { imageUrl: string; rawOutput: stri
       context.lineWidth = Math.max(2, canvas.width / 450);
       context.font = `600 ${Math.max(13, Math.round(canvas.width / 55))}px sans-serif`;
       for (const box of boxes) {
-        if (selectedId !== null && box.objectId !== selectedId) continue;
+        if (focusedId !== null && box.objectId !== focusedId) continue;
         context.strokeStyle = '#ffcb4a';
         context.fillStyle = '#ffcb4a';
         context.strokeRect(box.left, box.top, box.right - box.left, box.bottom - box.top);
@@ -106,7 +122,7 @@ function MaskViewer({ imageUrl, rawOutput }: { imageUrl: string; rawOutput: stri
         context.fillText(label, x + 6, y + labelHeight - 6);
       }
     }
-  }, [boxes, decoded, dimensions, selectedId, showBoxes, showMasks]);
+  }, [boxes, decoded, dimensions, focusedId, showBoxes, showMasks]);
 
   return (
     <div className="sam-viewer">
@@ -118,12 +134,21 @@ function MaskViewer({ imageUrl, rawOutput }: { imageUrl: string; rawOutput: stri
       {objects.length > 0 && (
         <>
           <p className="storefront-muted sam-viewer-guide">A prompt can match more than one region. Select an object to inspect it separately. Percentages are model scores, not verified accuracy.</p>
+          {signCandidate && (
+            <div className="sam-sign-focus">
+              <div>
+                <strong>Suggested sign region: Object {signCandidate.id}</strong>
+                <p>The viewer starts with this region focused. This is a geometry-only guess, not verified sign recognition. Choose All objects to compare.</p>
+              </div>
+              <button type="button" onClick={() => setSelectedId('__suggested__')}>Focus suggested region</button>
+            </div>
+          )}
           <div className="sam-object-list" role="group" aria-label="Choose detected object">
-            <button type="button" className={selectedId === null ? 'is-active' : ''}
-              aria-pressed={selectedId === null} onClick={() => setSelectedId(null)}>All objects</button>
+            <button type="button" className={focusedId === null ? 'is-active' : ''}
+              aria-pressed={focusedId === null} onClick={() => setSelectedId(null)}>All objects</button>
             {objects.map((object) => (
-              <button key={object.id} type="button" className={selectedId === object.id ? 'is-active' : ''}
-                aria-pressed={selectedId === object.id} onClick={() => setSelectedId(object.id)}>
+              <button key={object.id} type="button" className={focusedId === object.id ? 'is-active' : ''}
+                aria-pressed={focusedId === object.id} onClick={() => setSelectedId(object.id)}>
                 Object {object.id}{object.confidence === undefined ? '' : ` · ${Math.round(object.confidence * 100)}%`}
               </button>
             ))}
@@ -236,7 +261,7 @@ export default function SegmentationPanel({ businessId, mediaId, mimeType, sizeB
               {active.lastError && <p className="storefront-error">{active.lastError}</p>}
               {active.status === 'PROCESSING' && <p className="storefront-muted">A prior SAM request is still marked processing. Check its backend status before retrying.</p>}
               {active.status === 'COMPLETED' && active.rawOutput !== null && (
-                <MaskViewer key={active.id} imageUrl={storefrontFileUrl(businessId, mediaId)} rawOutput={active.rawOutput} />
+                <MaskViewer key={active.id} concept={active.concept} imageUrl={storefrontFileUrl(businessId, mediaId)} rawOutput={active.rawOutput} />
               )}
             </div>
           )}
