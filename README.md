@@ -84,10 +84,7 @@ frontend/
   src/features/     # Business, neighborhood, storefront, analysis and evidence views
   src/services/     # API clients
   public/           # UI assets and custom icons
-docs/
-  DEMO_SCRIPT.md
-  SUBMISSION_CHECKLIST.md
-  SYSTEM_NOTES.md
+
 ```
 
 ## Run locally (Windows / PowerShell)
